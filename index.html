@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Llink AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <h2>Llink</h2>
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Écris à Llink...">
+            <button onclick="sendMessage()">Envoyer</button>
+        </div>
+    </div>
+    <script>
+    async function sendMessage() {
+    const input = document.getElementById('user-input');
+    const chatBox = document.getElementById('chat-box');
+    const message = input.value;
+    if (!message) return;
+
+    // Afficher ton message
+    chatBox.innerHTML += `<p><b>Toi:</b> ${message}</p>`;
+    input.value = '';
+
+    // Appel à ton API sur Render (Remplace par l'URL que Render te donnera)
+    const response = await fetch('https://ton-projet-render.onrender.com/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: message })
+    });
+
+    const data = await response.json();
+    chatBox.innerHTML += `<p><b>Llink:</b> ${data.reply}</p>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+    </script>
+</body>
+</html>
