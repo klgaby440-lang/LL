@@ -5,7 +5,9 @@ from pydantic import BaseModel
 import httpx  # Le remplaçant asynchrone de requests
 
 app = FastAPI(title="Llink Backend")
-
+@app.get("/")
+async def root():
+    return {"status": "Llink API est en ligne !", "message": "Utilisez la route /chat pour communiquer."}
 # Configuration CORS pour Vercel
 app.add_middleware(
     CORSMiddleware,
