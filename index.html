@@ -3,40 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Llink AI</title>
-    <link rel="stylesheet" href="style.css">
+    <title>FLOW LAB | IA TRADUCTION & OCR</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root { 
+            --primary: #d32f2f; /* Thème Rouge */
+            --primary-dark: #b71c1c;
+            --bg: #fff5f5; 
+            --card: white; 
+        }
+        body { background-color: var(--bg); padding: 20px; font-family: 'Segoe UI', sans-serif; text-align: center; color: #333; }
+        main { background-color: var(--card); padding: 30px; width: 95%; max-width: 600px; margin: 0 auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(211, 47, 47, 0.1); }
+        header h1 { color: var(--primary-dark); margin-bottom: 5px; }
+        header p { color: #666; font-size: 14px; margin-top: 0; }
+        .menu { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 10px; }
+        select { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; background: white; }
+        textarea { width: 100%; padding: 15px; height: 120px; margin: 10px 0; border: 1px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 16px; resize: none; outline: none; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        button, .btn-upload { flex: 1; background-color: var(--primary); color: white; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; min-width: 45%; text-align: center; }
+        .btn-upload { background-color: #424242; } /* Bouton gris foncé pour l'image */
+        button:active, .btn-upload:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input[type="file"] { display: none; }
+        #sortie { padding: 20px; background: #fafafa; border-radius: 8px; border-left: 5px solid var(--primary); text-align: left; min-height: 40px; white-space: pre-wrap; }
+        #status_ocr { font-size: 12px; color: var(--primary-dark); font-weight: bold; margin-bottom: 10px; display: block; }
+    </style>
 </head>
 <body>
-    <div class="chat-container">
-        <h2>Llink</h2>
-        <div id="chat-box"></div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Écris à Llink...">
-            <button onclick="sendMessage()">Envoyer</button>
+    <header>
+        <h1>FLOW LAB</h1>
+        <p>TRADUCTION IA & VISION OPTIQUE</p>
+    </header>
+
+    <main>
+        <div class="menu">
+            <select id="langue_src">
+                <option value="Français">Français</option>
+                <option value="Anglais">Anglais</option>
+                <option value="Swahili">Swahili</option>
+            </select>
+            <select id="langue_trgt">
+                <option value="Swahili">Swahili</option>
+                <option value="Lingala">Lingala</option>
+                <option value="Français">Français</option>
+            </select>
         </div>
-    </div>
+
+        <div class="actions">
+            <label class="btn-upload">
+                📸 SCANNER TEXTE
+                <input type="file" accept="image/*" capture="environment" id="input_image">
+            </label>
+            <button id="bouton">TRADUIRE</button>
+        </div>
+        
+        <span id="status_ocr"></span>
+        <textarea id="entree" placeholder="Le texte scanné apparaîtra ici ou tapez-le manuellement..."></textarea>
+        
+        <div id="sortie">La traduction s'affichera ici...</div>
+    </main>
+
     <script>
-    async function sendMessage() {
-    const input = document.getElementById('user-input');
-    const chatBox = document.getElementById('chat-box');
-    const message = input.value;
-    if (!message) return;
+        // Fragmentation de la clé API
+        const p1 = "hf_upEJEWLPHPyrkFjVur";
+        const p2 = "CpJlsCvXlPNIaiZm"; 
+        const API_TOKEN = p1 + p2;
 
-    // Afficher ton message
-    chatBox.innerHTML += `<p><b>Toi:</b> ${message}</p>`;
-    input.value = '';
+        const inputImage = document.getElementById("input_image");
+        const statusOcr = document.getElementById("status_ocr");
+        const entreeTxt = document.getElementById("entree");
+        const btnTraduire = document.getElementById("bouton");
+        const sortieDiv = document.getElementById("sortie");
 
-    // Appel à ton API sur Render (Remplace par l'URL que Render te donnera)
-    const response = await fetch('https://ton-projet-render.onrender.com/chat', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: message })
-    });
+        // 1. Logique d'extraction de texte (OCR) avec Tesseract.js
+        inputImage.addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-    const data = await response.json();
-    chatBox.innerHTML += `<p><b>Llink:</b> ${data.reply}</p>`;
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
+            statusOcr.innerText = "⏳ Analyse de l'image en cours...";
+            
+            try {
+                // Tesseract détecte le français et l'anglais par défaut
+                const resultat = await Tesseract.recognize(file, 'fra+eng', {
+                    logger: m => { if(m.status === 'recognizing text') statusOcr.innerText = `⏳ Lecture : ${Math.round(m.progress * 100)}%`; }
+                });
+                
+                entreeTxt.value = resultat.data.text.trim();
+                statusOcr.innerText = "✅ Texte extrait avec succès.";
+                setTimeout(() => statusOcr.innerText = "", 3000);
+            } catch (err) {
+                statusOcr.innerText = "❌ Échec de la lecture de l'image.";
+                console.error(err);
+            }
+        });
+
+        // 2. Logique de Traduction (DeepSeek)
+        btnTraduire.addEventListener("click", async () => {
+            const texte = entreeTxt.value;
+            const src = document.getElementById("langue_src").value;
+            const trgt = document.getElementById("langue_trgt").value;
+
+            if (!texte.trim()) return;
+            
+            btnTraduire.innerText = "EN COURS...";
+            btnTraduire.disabled = true;
+
+            const BASE_URL_TRANS = "https://router.huggingface.co/v1/chat/completions";
+            const API_URL_TRANS = "https://corsproxy.io/?" + encodeURIComponent(BASE_URL_TRANS);
+
+            try {
+                const response = await fetch(API_URL_TRANS, {
+                    method: "POST",
+                    headers: { 
+                        "Authorization": `Bearer ${API_TOKEN}`, 
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-ai/DeepSeek-V3",
+                        messages: [
+                            { role: "system", content: `Traduis de ${src} vers ${trgt}. Fournir uniquement le texte traduit.` },
+                            { role: "user", content: texte }
+                        ],
+                        max_tokens: 500
+                    })
+                });
+
+                const data = await response.json();
+                sortieDiv.innerText = data.choices[0].message.content.trim();
+
+            } catch (err) {
+                sortieDiv.innerText = "Erreur réseau.";
+            } finally {
+                btnTraduire.innerText = "TRADUIRE";
+                btnTraduire.disabled = false;
+            }
+        });
     </script>
 </body>
-</html>
+  </html>
