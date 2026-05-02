@@ -14,7 +14,7 @@ HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # Modèles utilisés
 CHAT_MODEL = "deepseek-ai/DeepSeek-V3"
-VISION_MODEL = "microsoft/phi-3-vision-128k-instruct" # Excellent pour l'OCR/Vision
+VISION_MODEL = "zai-org/GLM-OCR" # Excellent pour l'OCR/Vision
 
 # 2. CONFIGURATION CORS (Pour autoriser ton site Vercel)
 app.add_middleware(
