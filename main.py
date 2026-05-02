@@ -1,198 +1,90 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import httpx  # Le remplaçant asynchrone de requests
+import httpx
+import json
 
-app = FastAPI(title="Llink Backend")
-@app.get("/")
-async def root():
-    return """
-    <!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLOW LAB | IA TRADUCTION & OCR</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <style>
-        :root { 
-            --primary: #d32f2f; /* Thème Rouge */
-            --primary-dark: #b71c1c;
-            --bg: #fff5f5; 
-            --card: white; 
-        }
-        body { background-color: var(--bg); padding: 20px; font-family: 'Segoe UI', sans-serif; text-align: center; color: #333; }
-        main { background-color: var(--card); padding: 30px; width: 95%; max-width: 600px; margin: 0 auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(211, 47, 47, 0.1); }
-        header h1 { color: var(--primary-dark); margin-bottom: 5px; }
-        header p { color: #666; font-size: 14px; margin-top: 0; }
-        .menu { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 10px; }
-        select { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; background: white; }
-        textarea { width: 100%; padding: 15px; height: 120px; margin: 10px 0; border: 1px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 16px; resize: none; outline: none; }
-        .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
-        button, .btn-upload { flex: 1; background-color: var(--primary); color: white; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; min-width: 45%; text-align: center; }
-        .btn-upload { background-color: #424242; } /* Bouton gris foncé pour l'image */
-        button:active, .btn-upload:active { transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        input[type="file"] { display: none; }
-        #sortie { padding: 20px; background: #fafafa; border-radius: 8px; border-left: 5px solid var(--primary); text-align: left; min-height: 40px; white-space: pre-wrap; }
-        #status_ocr { font-size: 12px; color: var(--primary-dark); font-weight: bold; margin-bottom: 10px; display: block; }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>FLOW LAB</h1>
-        <p>TRADUCTION IA & VISION OPTIQUE</p>
-    </header>
+app = FastAPI(title="Llink API Server")
 
-    <main>
-        <div class="menu">
-            <select id="langue_src">
-                <option value="Français">Français</option>
-                <option value="Anglais">Anglais</option>
-                <option value="Swahili">Swahili</option>
-            </select>
-            <select id="langue_trgt">
-                <option value="Swahili">Swahili</option>
-                <option value="Lingala">Lingala</option>
-                <option value="Français">Français</option>
-            </select>
-        </div>
+# 1. CONFIGURATION SÉCURISÉE
+# Le token doit être ajouté dans le "Dashboard Render" -> Env Vars sous le nom HF_TOKEN
+HF_TOKEN = os.getenv("HF_TOKEN")
+HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
-        <div class="actions">
-            <label class="btn-upload">
-                📸 SCANNER TEXTE
-                <input type="file" accept="image/*" capture="environment" id="input_image">
-            </label>
-            <button id="bouton">TRADUIRE</button>
-        </div>
-        
-        <span id="status_ocr"></span>
-        <textarea id="entree" placeholder="Le texte scanné apparaîtra ici ou tapez-le manuellement..."></textarea>
-        
-        <div id="sortie">La traduction s'affichera ici...</div>
-    </main>
+# Modèles utilisés
+CHAT_MODEL = "deepseek-ai/DeepSeek-V3"
+VISION_MODEL = "microsoft/phi-3-vision-128k-instruct" # Excellent pour l'OCR/Vision
 
-    <script>
-        // Fragmentation de la clé API
-        const p1 = "hf_upEJEWLPHPyrkFjVur";
-        const p2 = "CpJlsCvXlPNIaiZm"; 
-        const API_TOKEN = p1 + p2;
-
-        const inputImage = document.getElementById("input_image");
-        const statusOcr = document.getElementById("status_ocr");
-        const entreeTxt = document.getElementById("entree");
-        const btnTraduire = document.getElementById("bouton");
-        const sortieDiv = document.getElementById("sortie");
-
-        // 1. Logique d'extraction de texte (OCR) avec Tesseract.js
-        inputImage.addEventListener("change", async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            statusOcr.innerText = "⏳ Analyse de l'image en cours...";
-            
-            try {
-                // Tesseract détecte le français et l'anglais par défaut
-                const resultat = await Tesseract.recognize(file, 'fra+eng', {
-                    logger: m => { if(m.status === 'recognizing text') statusOcr.innerText = `⏳ Lecture : ${Math.round(m.progress * 100)}%`; }
-                });
-                
-                entreeTxt.value = resultat.data.text.trim();
-                statusOcr.innerText = "✅ Texte extrait avec succès.";
-                setTimeout(() => statusOcr.innerText = "", 3000);
-            } catch (err) {
-                statusOcr.innerText = "❌ Échec de la lecture de l'image.";
-                console.error(err);
-            }
-        });
-
-        // 2. Logique de Traduction (DeepSeek)
-        btnTraduire.addEventListener("click", async () => {
-            const texte = entreeTxt.value;
-            const src = document.getElementById("langue_src").value;
-            const trgt = document.getElementById("langue_trgt").value;
-
-            if (!texte.trim()) return;
-            
-            btnTraduire.innerText = "EN COURS...";
-            btnTraduire.disabled = true;
-
-            const BASE_URL_TRANS = "https://router.huggingface.co/v1/chat/completions";
-            const API_URL_TRANS = "https://corsproxy.io/?" + encodeURIComponent(BASE_URL_TRANS);
-
-            try {
-                const response = await fetch(API_URL_TRANS, {
-                    method: "POST",
-                    headers: { 
-                        "Authorization": `Bearer ${API_TOKEN}`, 
-                        "Content-Type": "application/json" 
-                    },
-                    body: JSON.stringify({
-                        model: "deepseek-ai/DeepSeek-V3",
-                        messages: [
-                            { role: "system", content: `Traduis de ${src} vers ${trgt}. Fournir uniquement le texte traduit.` },
-                            { role: "user", content: texte }
-                        ],
-                        max_tokens: 500
-                    })
-                });
-
-                const data = await response.json();
-                sortieDiv.innerText = data.choices[0].message.content.trim();
-
-            } catch (err) {
-                sortieDiv.innerText = "Erreur réseau.";
-            } finally {
-                btnTraduire.innerText = "TRADUIRE";
-                btnTraduire.disabled = false;
-            }
-        });
-    </script>
-</body>
-  </html>
-  """
-# Configuration CORS pour Vercel
+# 2. CONFIGURATION CORS (Pour autoriser ton site Vercel)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"], # Tu pourras restreindre à ton URL Vercel plus tard
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configuration API
-HF_TOKEN = os.getenv("HF_TOKEN")
-MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
+# 3. ENDPOINT : CHAT & TRADUCTION TEXTE
+@app.post("/api/chat")
+async def chat_endpoint(
+    message: str = Form(...), 
+    mode: str = Form("chat")
+):
+    if not HF_TOKEN:
+        raise HTTPException(status_code=500, detail="Clé API manquante sur le serveur.")
 
-class ChatRequest(BaseModel):
-    message: str
+    # Construction du prompt selon le mode
+    system_prompt = "Tu es Llink, l'IA de Gabriel Lab."
+    if mode == "translate":
+        system_prompt = "Tu es un traducteur expert. Traduis le texte suivant fidèlement. Réponds uniquement avec la traduction."
 
-@app.post("/chat")
-async def chat(request: ChatRequest):
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    
-    # Formatage spécifique pour Qwen (ChatML)
-    prompt = f"<|im_start|>system\nTu es Llink, l'IA créée par Gabriel à Bukavu.<|im_end|>\n<|im_start|>user\n{request.message}<|im_end|>\n<|im_start|>assistant\n"
-    
     payload = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": 200, "temperature": 0.7}
+        "model": CHAT_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message}
+        ],
+        "max_tokens": 1000,
+        "temperature": 0.7
     }
 
-    # On utilise un client asynchrone qui ne bloque pas le serveur
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            response = await client.post(API_URL, headers=headers, json=payload)
-            result = response.json()
+            # Note: On utilise l'URL router pour DeepSeek ou l'URL Inference classique
+            url = "https://api-inference.huggingface.co/v1/chat/completions"
+            response = await client.post(url, headers=HEADERS, json=payload)
+            response.raise_for_status()
+            data = response.json()
             
-            # Extraction propre de la réponse
-            if isinstance(result, list) and len(result) > 0:
-                full_text = result[0].get("generated_text", "")
-                reply = full_text.split("assistant\n")[-1].strip()
-            else:
-                reply = "Désolé, je rencontre une petite erreur technique."
+            return {"response": data["choices"][0]["message"]["content"]}
         except Exception as e:
-            reply = f"Erreur de connexion : {str(e)}"
+            return {"response": f"Erreur serveur (Online): {str(e)}"}
+
+# 4. ENDPOINT : OCR & VISION (ANALYSE D'IMAGE)
+@app.post("/api/ocr")
+async def ocr_endpoint(file: UploadFile = File(...)):
+    # Ici, nous envoyons l'image au modèle de vision de Hugging Face
+    # Pour un OCR pur, on pourrait aussi utiliser Tesseract côté serveur, 
+    # mais un modèle de Vision est plus "intelligent" pour Llink.
+    
+    img_data = await file.read()
+    
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            url = f"https://api-inference.huggingface.co/models/{VISION_MODEL}"
+            # On envoie l'image brute
+            response = await client.post(url, headers=HEADERS, content=img_data)
             
-    return {"reply": reply}
+            # Note : Le retour dépend du modèle choisi. 
+            # Si le modèle renvoie du JSON avec le texte détecté :
+            result = response.json()
+            # Simplification pour l'exemple
+            text_found = result[0].get("generated_text", "Texte non détecté") if isinstance(result, list) else "Analyse terminée."
+            
+            return {"response": text_found}
+        except Exception as e:
+            return {"response": f"Erreur Vision : {str(e)}"}
+
+@app.get("/")
+def home():
+    return {"status": "Llink Server is running 🚀"}
