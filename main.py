@@ -66,7 +66,7 @@ async def ocr_endpoint(file: UploadFile = File(...)):
     img_data = await file.read()
     
     # URL de l'API Inférence
-    url = "https://router.huggingface.co/models/zai-org/GLM-OCR"
+    url = "https://api-inference.huggingface.co/models/zai-org/GLM-OCR"
     
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
