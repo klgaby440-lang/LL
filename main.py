@@ -51,7 +51,7 @@ async def chat_endpoint(
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             # Note: On utilise l'URL router pour DeepSeek ou l'URL Inference classique
-            url = "https://api-inference.huggingface.co/v1/chat/completions"
+            url = "https://router.huggingface.co/v1/chat/completions"
             response = await client.post(url, headers=HEADERS, json=payload)
             response.raise_for_status()
             data = response.json()
@@ -71,7 +71,7 @@ async def ocr_endpoint(file: UploadFile = File(...)):
     
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            url = f"https://api-inference.huggingface.co/models/{VISION_MODEL}"
+            url = f"https://router.huggingface.co/models/{VISION_MODEL}"
             # On envoie l'image brute
             response = await client.post(url, headers=HEADERS, content=img_data)
             
