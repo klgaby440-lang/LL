@@ -63,27 +63,40 @@ async def chat_endpoint(
 # 4. ENDPOINT : OCR & VISION (ANALYSE D'IMAGE)
 @app.post("/api/ocr")
 async def ocr_endpoint(file: UploadFile = File(...)):
-    # Ici, nous envoyons l'image au modèle de vision de Hugging Face
-    # Pour un OCR pur, on pourrait aussi utiliser Tesseract côté serveur, 
-    # mais un modèle de Vision est plus "intelligent" pour Llink.
-    
     img_data = await file.read()
+    
+    # URL de l'API Inférence
+    url = "https://api-inference.huggingface.co/models/zai-org/GLM-OCR"
     
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            url = f"https://router.huggingface.co/models/{VISION_MODEL}"
-            # On envoie l'image brute
+            # On envoie l'image avec les headers d'autorisation
             response = await client.post(url, headers=HEADERS, content=img_data)
             
-            # Note : Le retour dépend du modèle choisi. 
-            # Si le modèle renvoie du JSON avec le texte détecté :
-            result = response.json()
-            # Simplification pour l'exemple
-            text_found = result[0].get("generated_text", "Texte non détecté") if isinstance(result, list) else "Analyse terminée."
-            
-            return {"response": text_found}
+            # LOG DE SÉCURITÉ : Pour voir ce que Hugging Face répond réellement dans tes logs Render
+            print(f"Status Code: {response.status_code}")
+            print(f"Raw Response: {response.text}")
+
+            if response.status_code == 503:
+                return {"response": "Le modèle OCR est en train de charger sur les serveurs. Réessaie dans 30 secondes ! ⏳"}
+
+            if response.status_code != 200:
+                return {"response": f"Erreur Hugging Face : {response.text}"}
+
+            # On vérifie si la réponse est bien du JSON avant de parser
+            try:
+                result = response.json()
+                # Selon le modèle, le texte est souvent dans 'generated_text'
+                if isinstance(result, list):
+                    text = result[0].get("generated_text", "Aucun texte détecté.")
+                else:
+                    text = result.get("generated_text", "Analyse terminée.")
+                return {"response": text}
+            except Exception:
+                return {"response": f"Réponse non-JSON reçue : {response.text[:100]}"}
+
         except Exception as e:
-            return {"response": f"Erreur Vision : {str(e)}"}
+            return {"response": f"Erreur de connexion : {str(e)}"}
 
 @app.get("/")
 def home():
