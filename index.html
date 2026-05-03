@@ -97,6 +97,21 @@
         }
         .btn-pill:hover { filter: brightness(0.95); }
 
+        /* NOUVEAU: Style pour le bouton Google */
+        #auth-btn {
+            background: #4285F4; color: white; border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #auth-btn:hover { background: #357AE8; }
+        #auth-btn img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+
+        /* NOUVEAU: Style pour la barre de langues */
+        #lang-bar {
+            display: none; justify-content: center; align-items: center; gap: 20px;
+            padding: 10px; background: var(--input-bg); border-radius: var(--radius-full);
+            margin: 0 auto 10px auto; width: fit-content; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
         /* --- ZONE DE CHAT (STYLE GEMINI) --- */
         #chat-window {
             flex-grow: 1; overflow-y: auto; padding: 20px;
@@ -195,6 +210,12 @@
         <header>
             <div style="display:flex; align-items:center; gap:10px;">
                 <button class="btn-icon" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+                
+                <!-- NOUVEAU: Bouton d'authentification Google -->
+                <button class="btn-pill" id="auth-btn" onclick="handleAuth()">
+                    <i data-lucide="log-in"></i> Connexion
+                </button>
+
                 <div class="btn-pill" id="mode-btn" onclick="toggleMode()" style="cursor:pointer;">
                     <i data-lucide="message-square"></i> Chat
                 </div>
@@ -205,6 +226,13 @@
                 </button>
             </div>
         </header>
+
+        <!-- NOUVEAU: Barre des langues (cachée par défaut) -->
+        <div id="lang-bar">
+            <span style="font-weight: 600;">Français</span>
+            <i data-lucide="arrow-right-left" style="color: var(--texte-clair);"></i>
+            <span style="font-weight: 600;">Anglais</span>
+        </div>
 
         <div id="chat-window">
             <!-- État vide inséré par JS -->
@@ -238,7 +266,7 @@
         import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers';
         env.allowLocalModels = true;
         env.allowRemoteModels = false; 
-        env.localModelPath = './models/'; // Pense à bien mettre ton dossier au même niveau que l'index
+        env.localModelPath = './models/';
 
         window.generateOfflineText = async (prompt) => {
             if(!window.localAI) {
@@ -250,8 +278,56 @@
         };
     </script>
 
+    <!-- NOUVEAU: Scripts d'authentification Firebase en type module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // GABRIEL : Remplace ceci par la configuration de ton projet Firebase
+        const firebaseConfig = {
+            apiKey: "TON_API_KEY",
+            authDomain: "ton-projet.firebaseapp.com",
+            projectId: "ton-projet",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        window.handleAuth = async () => {
+            if (window.isLoggedIn) {
+                await signOut(auth);
+            } else {
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error("Erreur de connexion", error);
+                }
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            const authBtn = document.getElementById('auth-btn');
+            if (user) {
+                window.isLoggedIn = true;
+                window.authToken = await user.getIdToken(); // Jeton à envoyer au serveur Render
+                authBtn.innerHTML = `<img src="${user.photoURL}" alt="Profil"> <span>Déconnexion</span>`;
+                window.loadHistory(); // Charge l'historique quand on se connecte
+            } else {
+                window.isLoggedIn = false;
+                window.authToken = null;
+                authBtn.innerHTML = `<i data-lucide="log-in"></i> Connexion`;
+                lucide.createIcons();
+                document.getElementById('history').innerHTML = `<div style="padding: 15px; text-align: center; color: var(--texte-clair); font-size: 0.9rem;">Connectez-vous pour voir l'historique.</div>`;
+                
+                // Si l'utilisateur se déconnecte alors qu'il est en hors ligne, on le remet en ligne
+                if (!window.isOnline) window.toggleOnline(); 
+            }
+        });
+    </script>
+
     <script>
-        // CONFIGURATION DB (Version 2 pour ajouter le mode)
+        // CONFIGURATION DB
         const db = new Dexie("LlinkDB");
         db.version(2).stores({ 
             chats: '++id, title, time, mode', 
@@ -260,11 +336,11 @@
 
         const SERVER_URL = "https://llink-usz9.onrender.com";
         let curChatId = null;
-        let isOnline = true;
+        window.isOnline = true; // Attaché à window pour y accéder partout
         let currentMode = 'chat'; // 'chat' ou 'translate'
         let chatToRename = null;
+        window.isLoggedIn = false; // NOUVEAU: Variable d'état de connexion globale
 
-        // --- SVG LOGO ---
         const emptyStateHTML = `
             <div id="empty-state">
                 <svg width="120" height="120" viewBox="0 0 100 100">
@@ -281,10 +357,13 @@
         async function newConversation() {
             curChatId = null;
             document.getElementById('chat-window').innerHTML = emptyStateHTML;
-            if(window.innerWidth < 768) toggleSidebar();
+            if(window.innerWidth < 768 && document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
         }
 
-        async function loadHistory() {
+        window.loadHistory = async () => {
+            // NOUVEAU: Protocole interdisant l'accès à l'historique sans connexion
+            if (!window.isLoggedIn) return; 
+
             const h = await db.chats.where('mode').equals(currentMode).reverse().toArray();
             document.getElementById('history').innerHTML = h.map(c => `
                 <div class="history-item">
@@ -296,7 +375,7 @@
                 </div>
             `).join('');
             lucide.createIcons();
-        }
+        };
 
         async function switchChat(id) {
             curChatId = id;
@@ -319,40 +398,46 @@
             const txt = document.getElementById('user-msg').value;
             if(!txt.trim()) return;
 
-            if(!curChatId) {
+            // NOUVEAU: Protocole interdisant l'enregistrement sans compte
+            if(!curChatId && window.isLoggedIn) {
                 curChatId = await db.chats.add({ title: txt.substring(0, 20) + "...", time: Date.now(), mode: currentMode });
-                document.getElementById('chat-window').innerHTML = ''; // Enlève le logo
-                loadHistory();
+                window.loadHistory();
             }
+            
+            if (document.getElementById('empty-state')) document.getElementById('empty-state').remove();
 
-            // Affiche le message utilisateur
-            await db.msgs.add({ chatId: curChatId, role: 'user', text: txt });
+            if (window.isLoggedIn) await db.msgs.add({ chatId: curChatId, role: 'user', text: txt });
             renderMessage(txt, 'user');
             
             document.getElementById('user-msg').value = '';
             document.getElementById('user-msg').style.height = '48px';
             
-            // Bulle de chargement
             const loadingId = "load-" + Date.now();
             renderMessage("Réflexion en cours...", 'bot', loadingId);
 
             let reply = "";
 
-            if(isOnline) {
-                // APPEL AU SERVEUR RENDER
+            if(window.isOnline) {
                 try {
                     const formData = new FormData();
                     formData.append('message', txt);
                     formData.append('mode', currentMode);
 
-                    const response = await fetch(`${SERVER_URL}/api/chat`, { method: 'POST', body: formData });
+                    // NOUVEAU: Envoi du Token au serveur pour authentification
+                    const headers = {};
+                    if (window.authToken) headers['Authorization'] = `Bearer ${window.authToken}`;
+
+                    const response = await fetch(`${SERVER_URL}/api/chat`, { 
+                        method: 'POST', 
+                        body: formData,
+                        headers: headers
+                    });
                     const data = await response.json();
                     reply = data.response || "Erreur de réponse du serveur.";
                 } catch(e) {
-                    reply = "Erreur de connexion au serveur. Essaie de passer en mode Hors-Ligne.";
+                    reply = "Erreur de connexion au serveur.";
                 }
             } else {
-                // APPEL AU MODÈLE LOCAL (TRANSFORMERS.JS)
                 try {
                     if(window.generateOfflineText) {
                         reply = await window.generateOfflineText(txt);
@@ -364,9 +449,8 @@
                 }
             }
 
-            // Remplace le message de chargement par la vraie réponse
             document.getElementById(loadingId).innerHTML = `<div class="msg bot">${reply.replace(/\n/g, '<br>')}</div>`;
-            await db.msgs.add({ chatId: curChatId, role: 'bot', text: reply });
+            if (window.isLoggedIn) await db.msgs.add({ chatId: curChatId, role: 'bot', text: reply });
             scrollToBottom();
         }
 
@@ -380,21 +464,27 @@
 
             let extractedText = "";
 
-            if(isOnline) {
-                // Envoi vers Render (GML_OCR simulé)
+            if(window.isOnline) {
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
-                    const res = await fetch(`${SERVER_URL}/api/ocr`, { method: 'POST', body: formData });
+                    
+                    const headers = {};
+                    if (window.authToken) headers['Authorization'] = `Bearer ${window.authToken}`;
+
+                    const res = await fetch(`${SERVER_URL}/api/ocr`, { 
+                        method: 'POST', 
+                        body: formData,
+                        headers: headers
+                    });
                     const data = await res.json();
                     extractedText = data.response || "Image analysée.";
                 } catch(err) {
-                    extractedText = "Échec du serveur en ligne. L'analyse Tesseract locale prend le relais...";
+                    extractedText = "Échec du serveur en ligne. L'analyse locale prend le relais...";
                 }
             } 
             
-            // Si hors-ligne ou si le serveur a échoué, on utilise Tesseract local
-            if(!isOnline || extractedText.includes("relais")) {
+            if(!window.isOnline || extractedText.includes("relais")) {
                 const { data: { text } } = await Tesseract.recognize(file, 'fra+eng');
                 extractedText = text || "Aucun texte détecté.";
             }
@@ -404,11 +494,8 @@
             document.getElementById('user-msg').focus();
         });
 
-        // --- FONCTIONS UTILITAIRES ---
         function renderMessage(txt, role, id = "") {
             const w = document.getElementById('chat-window');
-            if(document.getElementById('empty-state')) document.getElementById('empty-state').remove();
-            
             w.innerHTML += `
                 <div class="msg-wrapper ${role}" id="${id}">
                     <div class="msg ${role}">${txt.replace(/\n/g, '<br>')}</div>
@@ -425,29 +512,43 @@
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        function toggleOnline() {
-            isOnline = !isOnline;
+        window.toggleOnline = () => {
+            // NOUVEAU: Protocole interdisant le mode hors-ligne sans connexion
+            if (window.isOnline && !window.isLoggedIn) {
+                alert("Gabriel, tu dois être connecté avec ton compte Google pour activer le mode Hors-Ligne ultra-sécurisé.");
+                return;
+            }
+
+            window.isOnline = !window.isOnline;
             const btn = document.getElementById('conn-btn');
             const dot = document.getElementById('network-status');
-            if(isOnline) {
+            if(window.isOnline) {
                 dot.className = "status-dot online-dot";
                 btn.innerHTML = `<span class="status-dot online-dot" id="network-status"></span> En Ligne`;
             } else {
                 dot.className = "status-dot offline-dot";
                 btn.innerHTML = `<span class="status-dot offline-dot" id="network-status"></span> Hors Ligne`;
             }
-        }
+        };
 
         async function toggleMode() {
             currentMode = currentMode === 'chat' ? 'translate' : 'chat';
             const btn = document.getElementById('mode-btn');
-            btn.innerHTML = currentMode === 'chat' ? '<i data-lucide="message-square"></i> Chat' : '<i data-lucide="languages"></i> Traduction';
+            const langBar = document.getElementById('lang-bar'); // NOUVEAU
+
+            if (currentMode === 'chat') {
+                btn.innerHTML = '<i data-lucide="message-square"></i> Chat';
+                langBar.style.display = 'none'; // NOUVEAU: Cache la barre
+            } else {
+                btn.innerHTML = '<i data-lucide="languages"></i> Traduction';
+                langBar.style.display = 'flex'; // NOUVEAU: Affiche la barre
+            }
+
             lucide.createIcons();
             await newConversation();
-            loadHistory();
+            window.loadHistory();
         }
 
-        // --- GESTION DES NOMS DE CONVERSATION ---
         function openRenameModal(id, currentName) {
             chatToRename = id;
             document.getElementById('rename-input').value = currentName;
@@ -456,9 +557,9 @@
 
         async function saveChatName() {
             const newName = document.getElementById('rename-input').value.trim();
-            if(newName && chatToRename) {
+            if(newName && chatToRename && window.isLoggedIn) {
                 await db.chats.update(chatToRename, { title: newName });
-                loadHistory();
+                window.loadHistory();
             }
             closeModal('rename-modal');
         }
@@ -468,14 +569,13 @@
                 await db.chats.delete(id);
                 await db.msgs.where('chatId').equals(id).delete();
                 if(curChatId === id) newConversation();
-                loadHistory();
+                window.loadHistory();
             }
         }
 
-        // Démarrage
         lucide.createIcons();
         newConversation();
-        loadHistory();
+        window.loadHistory();
     </script>
 </body>
 </html>
