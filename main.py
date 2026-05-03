@@ -6,10 +6,22 @@ import firebase_admin
 from firebase_admin import credentials, auth
 
 # 1. INITIALISATION DE FIREBASE (SÉCURITÉ)
-# Assure-toi d'avoir le fichier firebase-adminsdk.json à la racine de ton projet sur Render
 try:
-    cred = credentials.Certificate("firebase-adminsdk.json")
-    firebase_admin.initialize_app(cred)
+    # On récupère la chaîne JSON stockée dans la variable d'environnement sur Render
+    firebase_config_raw = os.getenv("FIREBASE_CONFIG")
+    
+    if firebase_config_raw:
+        # On transforme la chaîne de caractères en dictionnaire Python
+        firebase_info = json.loads(firebase_config_raw)
+        cred = credentials.Certificate(firebase_info)
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase initialisé avec succès via Variable d'Environnement !")
+    else:
+        # Solution de secours si tu testes en local avec le fichier
+        cred = credentials.Certificate("firebase-adminsdk.json")
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase initialisé via fichier local.")
+        
 except Exception as e:
     print(f"⚠️ Erreur lors de l'initialisation de Firebase : {e}")
 
