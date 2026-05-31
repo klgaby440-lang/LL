@@ -13,13 +13,13 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22' # 🔥 Mis à jour ici pour aligner avec les exigences de Capacitor
+        node-version: '22'
 
     - name: Install Java
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '17'
+        java-version: '21' # 🔥 Mis à jour de 17 à 21 pour résoudre l'erreur "invalid source release"
 
     - name: Install Dependencies
       run: npm install
