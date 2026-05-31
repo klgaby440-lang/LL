@@ -6,11 +6,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # 🌟 ICI : On indique à GitHub le dossier contenant le package.json
-    defaults:
-      run:
-        working-directory: ./Llink  # <-- REMPLACE par le nom exact de ton sous-dossier
-
     steps:
     - name: Checkout source code
       uses: actions/checkout@v4
@@ -32,20 +27,20 @@ jobs:
     - name: Build Web App
       run: npm run build
 
+    - name: Add Android Platform (Génération du dossier manquant)
+      run: npx cap add android
+
     - name: Capacitor Sync
-      run: |
-        npx cap sync
+      run: npx cap sync
         
     - name: Build APK with Gradle
-      # Pour cette étape native, on force le sous-dossier android
       run: |
         cd android
+        chmod +x gradlew
         ./gradlew assembleDebug
 
     - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
+      uses: uses: actions/upload-artifact@v4
       with:
         name: lugalink-debug-apk
-        # Assure-toi que le chemin pointe bien vers le sous-dossier
-        path: ./Llink/android/app/build/outputs/apk/debug/app-debug.apk
-#Tout est enfin pret
+        path: ./android/app/build/outputs/apk/debug/app-debug.apk
