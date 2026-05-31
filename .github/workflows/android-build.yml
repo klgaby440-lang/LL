@@ -48,3 +48,4 @@ jobs:
         name: lugalink-debug-apk
         # Assure-toi que le chemin pointe bien vers le sous-dossier
         path: ./Llink/android/app/build/outputs/apk/debug/app-debug.apk
+#Tout est enfin pret
