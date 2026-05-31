@@ -13,7 +13,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '22' # 🔥 Mis à jour ici pour aligner avec les exigences de Capacitor
 
     - name: Install Java
       uses: actions/setup-java@v4
@@ -23,8 +23,6 @@ jobs:
 
     - name: Install Dependencies
       run: npm install
-
-    # 🚀 L'étape "npm run build" a été supprimée ici car tes fichiers web dans /www sont déjà prêts !
 
     - name: Add Android Platform
       run: npx cap add android
