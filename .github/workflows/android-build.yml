@@ -24,10 +24,9 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
-    - name: Build Web App
-      run: npm run build
+    # 🚀 L'étape "npm run build" a été supprimée ici car tes fichiers web dans /www sont déjà prêts !
 
-    - name: Add Android Platform (Génération du dossier manquant)
+    - name: Add Android Platform
       run: npx cap add android
 
     - name: Capacitor Sync
@@ -44,4 +43,3 @@ jobs:
       with:
         name: lugalink-debug-apk
         path: ./android/app/build/outputs/apk/debug/app-debug.apk
-  # c'est bon ?
