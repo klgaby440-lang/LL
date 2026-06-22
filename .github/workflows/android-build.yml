@@ -24,20 +24,49 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
+    # 🛠️ AJOUT 1 : Téléchargement des scripts CDN pour un mode 100% hors-ligne
+    - name: Download External Dependencies
+      run: |
+        # On crée un dossier pour stocker les scripts localement dans ton dossier web (adapte "www" si ton dossier s'appelle "public" ou "dist")
+        mkdir -p www/offline-assets
+        
+        # Téléchargement de toutes les librairies externes
+        wget -qO www/offline-assets/tailwindcss.js https://cdn.tailwindcss.com
+        wget -qO www/offline-assets/lucide.js https://unpkg.com/lucide@latest
+        wget -qO www/offline-assets/dexie.js https://unpkg.com/dexie/dist/dexie.js
+        wget -qO www/offline-assets/tesseract.min.js https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js
+        
+        # Remplacement automatique des liens dans tes fichiers HTML par les chemins locaux
+        find . -name "*.html" -exec sed -i 's|https://cdn.tailwindcss.com|./offline-assets/tailwindcss.js|g' {} +
+        find . -name "*.html" -exec sed -i 's|https://unpkg.com/lucide@latest|./offline-assets/lucide.js|g' {} +
+        find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
+        find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
+
+    # 🧠 AJOUT 2 : Téléchargement du modèle SmolLM2 360M (int4) via Hugging Face CLI
+    - name: Download Offline AI Model
+      run: |
+        pip install huggingface_hub
+        # On télécharge les fichiers ONNX quantifiés (int4) et la configuration, et on les place dans www/models/
+        huggingface-cli download onnx-community/SmolLM2-360M-Instruct --include "onnx/*" "*.json" --local-dir www/models/SmolLM2-360M-Instruct
+
     - name: Add Android Platform
       run: npx cap add android
 
     - name: Capacitor Sync
       run: npx cap sync
         
-    - name: Build APK with Gradle
+    # 📦 MODIFICATION 3 : Génération du APK et du AAB
+    - name: Build APK and AAB with Gradle
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug # Génère le app-debug.apk
+        ./gradlew bundleDebug   # Génère le app-debug.aab pour le Play Store
 
-    - name: Upload APK Artifact
+    - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lugalink-debug-apk
-        path: ./android/app/build/outputs/apk/debug/app-debug.apk
+        name: lugalink-android-builds
+        path: |
+          ./android/app/build/outputs/apk/debug/app-debug.apk
+          ./android/app/build/outputs/bundle/debug/app-debug.aab
