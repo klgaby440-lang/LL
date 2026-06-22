@@ -24,7 +24,7 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
-    # 🛠️ AJOUT 1 : Téléchargement des scripts CDN pour un mode 100% hors-ligne
+    # 🛠️ ETAPE 1 : Téléchargement des scripts CDN pour un mode 100% hors-ligne
     - name: Download External Dependencies
       run: |
         # On crée un dossier pour stocker les scripts localement dans ton dossier web
@@ -42,7 +42,7 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 AJOUT 2 : Téléchargement sécurisé via le module Python (Correction de l'erreur CLI)
+    # 🧠 ETAPE 2 : Téléchargement sécurisé via le module Python (Correction stricte de la casse)
     - name: Download Offline AI Model
       run: |
         pip install huggingface_hub
@@ -50,15 +50,20 @@ jobs:
         import os
         from huggingface_hub import snapshot_download
         
-        # On s'assure que le dossier de destination existe
-        os.makedirs('www/models/SmolLM2-360M-Instruct', exist_ok=True)
+        # Le dossier de destination locale reste inchangé pour ton code JS
+        local_dir = 'www/models/SmolLM2-360M-Instruct'
+        os.makedirs(local_dir, exist_ok=True)
         
-        # Téléchargement propre via l'API officielle Python
+        print('=== Début du téléchargement du modèle SmolLM2 ===')
+        
+        # Correction de la casse : onnx-community utilise exclusivement des minuscules
         snapshot_download(
-            repo_id='onnx-community/SmolLM2-360M-Instruct',
-            local_dir='www/models/SmolLM2-360M-Instruct',
-            allow_patterns=['onnx/*', '*.json']
+            repo_id='onnx-community/smollm2-360m-instruct',
+            local_dir=local_dir,
+            allow_patterns=['*.onnx', 'onnx/*', '*.json', '*.txt']
         )
+        
+        print('=== Téléchargement local terminé avec succès ! ===')
         "
 
     - name: Add Android Platform
@@ -67,13 +72,13 @@ jobs:
     - name: Capacitor Sync
       run: npx cap sync
         
-    # 📦 MODIFICATION 3 : Génération du APK et du AAB
+    # 📦 ETAPE 3 : Génération simultanée du APK et du AAB
     - name: Build APK and AAB with Gradle
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug # Génère le app-debug.apk
-        ./gradlew bundleDebug   # Génère le app-debug.aab pour le Play Store
+        ./gradlew assembleDebug # Génère le app-debug.apk (Parfait pour tes tests directs)
+        ./gradlew bundleDebug   # Génère le app-debug.aab (Requis pour soumettre sur Google Play)
 
     - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
