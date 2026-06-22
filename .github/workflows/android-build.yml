@@ -19,49 +19,47 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '21' # 🔥 Maintien de la version 21 pour la compatibilité du build Android moderne
+        java-version: '21' # Maintien de la version 21 pour ton build Android moderne
 
     - name: Install Dependencies
       run: npm install
 
-    # 🛠️ ETAPE 1 : Téléchargement des scripts CDN pour un mode 100% hors-ligne
+    # 🛠️ ETAPE 1 : Téléchargement des scripts CDN pour ton mode hors-ligne
     - name: Download External Dependencies
       run: |
-        # Création du répertoire de stockage pour tes assets statiques locaux
         mkdir -p www/offline-assets
         
-        # Téléchargement propre de tes fichiers JS requis pour Luga Link
         wget -qO www/offline-assets/tailwindcss.js https://cdn.tailwindcss.com
         wget -qO www/offline-assets/lucide.js https://unpkg.com/lucide@latest
         wget -qO www/offline-assets/dexie.js https://unpkg.com/dexie/dist/dexie.js
         wget -qO www/offline-assets/tesseract.min.js https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js
         
-        # Substitution dynamique des CDN par les chemins locaux dans tes fichiers HTML
         find . -name "*.html" -exec sed -i 's|https://cdn.tailwindcss.com|./offline-assets/tailwindcss.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/lucide@latest|./offline-assets/lucide.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 ETAPE 2 : Téléchargement anonyme forcé via Python (Bypass complet du bug de Token 401)
+    # 🧠 ETAPE 2 : Téléchargement sécurisé via ta variable d'environnement HF_TOKEN
     - name: Download Offline AI Model
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }} # 👈 GitHub injecte ici ton secret caché dans la variable d'environnement
       run: |
         pip install huggingface_hub
         python3 -c "
         import os
         from huggingface_hub import snapshot_download
         
-        # Définition du dossier local qui abritera l'intelligence artificielle locale
+        repo_id = 'onnx-community/SmolLM2-360M-Instruct-ONNX'
         local_dir = 'www/models/SmolLM2-360M-Instruct'
-        os.makedirs(local_dir, exist_ok=True)
         
-        print('=== Début du téléchargement anonyme du modèle SmolLM2 ===')
+        print('=== Début du téléchargement authentifié du modèle SmolLM2 ===')
         
-        # L'ajout de token=False force l'anonymat et neutralise tout conflit d'authentification
+        # os.environ.get('HF_TOKEN') extrait de manière sécurisée la variable d'environnement définie juste au-dessus
         snapshot_download(
-            repo_id='onnx-community/SmolLM2-360M-Instruct',
+            repo_id=repo_id,
             local_dir=local_dir,
             allow_patterns=['*.onnx', 'onnx/*', '*.json', '*.txt'],
-            token=False
+            token=os.environ.get('HF_TOKEN')
         )
         
         print('=== Téléchargement local terminé avec succès ! ===')
@@ -73,13 +71,13 @@ jobs:
     - name: Capacitor Sync
       run: npx cap sync
         
-    # 📦 ETAPE 3 : Génération de l'application sous formats APK et AAB via Gradle
+    # 📦 ETAPE 3 : Compilation Gradle vers APK et AAB
     - name: Build APK and AAB with Gradle
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug # Compile le package app-debug.apk pour tes tests mobiles directs
-        ./gradlew bundleDebug   # Compile le package app-debug.aab prêt pour le déploiement Play Store
+        ./gradlew assembleDebug # Génère ton fichier de test app-debug.apk
+        ./gradlew bundleDebug   # Génère ton fichier app-debug.aab pour le Play Store
 
     - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
