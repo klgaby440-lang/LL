@@ -19,7 +19,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '21' # Maintien de la version 21 pour ton build Android moderne
+        java-version: '21' 
 
     - name: Install Dependencies
       run: npm install
@@ -39,10 +39,10 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 ETAPE 2 : Téléchargement sécurisé via ta variable d'environnement HF_TOKEN
+    # 🧠 ETAPE 2 : Téléchargement CHIRURGICAL du modèle int4 uniquement (Bypass des 5 Go)
     - name: Download Offline AI Model
       env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }} # 👈 GitHub injecte ici ton secret caché dans la variable d'environnement
+        HF_TOKEN: ${{ secrets.HF_TOKEN }} 
       run: |
         pip install huggingface_hub
         python3 -c "
@@ -52,13 +52,14 @@ jobs:
         repo_id = 'onnx-community/SmolLM2-360M-Instruct-ONNX'
         local_dir = 'www/models/SmolLM2-360M-Instruct'
         
-        print('=== Début du téléchargement authentifié du modèle SmolLM2 ===')
+        print('=== Début du téléchargement du modèle SmolLM2 (Version int4 uniquement) ===')
         
-        # os.environ.get('HF_TOKEN') extrait de manière sécurisée la variable d'environnement définie juste au-dessus
+        # Le filtre magique : Uniquement les fichiers q4, la config JSON et le tokenizer
         snapshot_download(
             repo_id=repo_id,
             local_dir=local_dir,
-            allow_patterns=['*.onnx', 'onnx/*', '*.json', '*.txt'],
+            allow_patterns=['*q4*.onnx', '*.json', '*.txt'],
+            ignore_patterns=['*fp16*', '*uint8*', '*q8*'], # On bloque explicitement les versions lourdes
             token=os.environ.get('HF_TOKEN')
         )
         
@@ -76,8 +77,8 @@ jobs:
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug # Génère ton fichier de test app-debug.apk
-        ./gradlew bundleDebug   # Génère ton fichier app-debug.aab pour le Play Store
+        ./gradlew assembleDebug 
+        ./gradlew bundleDebug   
 
     - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
