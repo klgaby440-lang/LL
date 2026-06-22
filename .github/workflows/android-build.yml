@@ -27,7 +27,7 @@ jobs:
     # 🛠️ AJOUT 1 : Téléchargement des scripts CDN pour un mode 100% hors-ligne
     - name: Download External Dependencies
       run: |
-        # On crée un dossier pour stocker les scripts localement dans ton dossier web (adapte "www" si ton dossier s'appelle "public" ou "dist")
+        # On crée un dossier pour stocker les scripts localement dans ton dossier web
         mkdir -p www/offline-assets
         
         # Téléchargement de toutes les librairies externes
@@ -42,12 +42,24 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 AJOUT 2 : Téléchargement du modèle SmolLM2 360M (int4) via Hugging Face CLI
+    # 🧠 AJOUT 2 : Téléchargement sécurisé via le module Python (Correction de l'erreur CLI)
     - name: Download Offline AI Model
       run: |
         pip install huggingface_hub
-        # On télécharge les fichiers ONNX quantifiés (int4) et la configuration, et on les place dans www/models/
-        huggingface-cli download onnx-community/SmolLM2-360M-Instruct --include "onnx/*" "*.json" --local-dir www/models/SmolLM2-360M-Instruct
+        python3 -c "
+        import os
+        from huggingface_hub import snapshot_download
+        
+        # On s'assure que le dossier de destination existe
+        os.makedirs('www/models/SmolLM2-360M-Instruct', exist_ok=True)
+        
+        # Téléchargement propre via l'API officielle Python
+        snapshot_download(
+            repo_id='onnx-community/SmolLM2-360M-Instruct',
+            local_dir='www/models/SmolLM2-360M-Instruct',
+            allow_patterns=['onnx/*', '*.json']
+        )
+        "
 
     - name: Add Android Platform
       run: npx cap add android
