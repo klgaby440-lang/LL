@@ -50,15 +50,15 @@ jobs:
         import os
         from huggingface_hub import snapshot_download
         
-        # Le dossier de destination locale reste inchangé pour ton code JS
+        # Le dossier local sur ton disque reste propre avec sa structure
         local_dir = 'www/models/SmolLM2-360M-Instruct'
         os.makedirs(local_dir, exist_ok=True)
         
         print('=== Début du téléchargement du modèle SmolLM2 ===')
         
-        # Correction de la casse : onnx-community utilise exclusivement des minuscules
+        # Correction de la casse ici : 'SmolLM2-360M-Instruct' avec la bonne casse publique
         snapshot_download(
-            repo_id='onnx-community/smollm2-360m-instruct',
+            repo_id='onnx-community/SmolLM2-360M-Instruct',
             local_dir=local_dir,
             allow_patterns=['*.onnx', 'onnx/*', '*.json', '*.txt']
         )
@@ -77,8 +77,8 @@ jobs:
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug # Génère le app-debug.apk (Parfait pour tes tests directs)
-        ./gradlew bundleDebug   # Génère le app-debug.aab (Requis pour soumettre sur Google Play)
+        ./gradlew assembleDebug # Génère le app-debug.apk (Pour tes tests)
+        ./gradlew bundleDebug   # Génère le app-debug.aab (Pour le Play Store)
 
     - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
