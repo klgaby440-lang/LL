@@ -30,23 +30,21 @@
     </script>
  
     <style>
-        /* =========================================
+/* =========================================
    VARIABLES & CONFIGURATION GLOBALE
    ========================================= */
 :root {
-    /* Couleurs claires */
     --campagne-light: #FDFBF7;
     --surface-light: #EFECE6;
     --userBg-light: #E3DFD5;
-    --text-light: #111827; /* gray-900 */
-    --border-light: #d1d5db; /* gray-300 */
+    --text-light: #111827; 
+    --border-light: #d1d5db; 
     
-    /* Couleurs sombres */
     --campagne-dark: #131314;
     --surface-dark: #1E1F20;
     --userBg-dark: #2B2C2F;
-    --text-dark: #f3f4f6; /* gray-100 */
-    --border-dark: #1f2937; /* gray-800 */
+    --text-dark: #f3f4f6; 
+    --border-dark: #1f2937; 
 }
 
 html.h-full, body.app-body {
@@ -67,9 +65,6 @@ body.app-body {
     color: var(--text-dark);
 }
 
-/* =========================================
-   UTILITAIRES
-   ========================================= */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hidden { display: none !important; }
@@ -88,16 +83,16 @@ body.app-body {
     transition: transform 0.3s ease;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); 
 }
 
-.sidebar.open { transform: translateX(0); } /* A gérer dans ton JS si tu ajoutes cette classe */
+.sidebar.open { transform: translateX(0); } 
 
 .dark .sidebar {
     background-color: var(--surface-dark);
 }
 
-@media (min-width: 1024px) { /* lg */
+@media (min-width: 1024px) { 
     .sidebar {
         position: static;
         transform: translateX(0);
@@ -244,7 +239,6 @@ body.app-body {
     width: 0.875rem;
     height: 0.875rem;
     border-radius: 9999px;
-    background-color: #22c55e; /* green-500 */
     box-shadow: 0 0 8px #34A853;
 }
 
@@ -301,7 +295,7 @@ body.app-body {
 
 .input-box {
     background-color: var(--surface-light);
-    border-radius: 1rem; /* 2xl */
+    border-radius: 1rem; 
     padding: 0.75rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     display: flex;
@@ -318,8 +312,8 @@ body.app-body {
     text-align: center;
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
-    background-color: #fee2e2; /* red-100 */
-    color: #dc2626; /* red-600 */
+    background-color: #fee2e2; 
+    color: #dc2626; 
     margin-bottom: 0.25rem;
 }
 
@@ -368,7 +362,7 @@ body.app-body {
     border-radius: 9999px;
     border: none;
     background: transparent;
-    color: #4b5563; /* gray-600 */
+    color: #4b5563; 
     cursor: pointer;
     transition: background-color 0.2s;
 }
@@ -394,80 +388,6 @@ body.app-body {
 .dark .btn-send { background-color: white; color: #111827; }
 .btn-send:hover { transform: scale(1.05); }
 
-/* =========================================
-   MODALS & OVERLAYS
-   ========================================= */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    z-index: 3000;
-}
-
-.modal-box {
-    background-color: var(--campagne-light);
-    width: 100%;
-    max-width: 24rem;
-    border-radius: 1.5rem; /* 3xl */
-    padding: 1.5rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    box-sizing: border-box;
-}
-
-.dark .modal-box { background-color: var(--campagne-dark); }
-
-.settings-box { max-width: 28rem; max-height: 90vh; overflow-y: auto; }
-
-.modal-title { font-size: 1.125rem; font-weight: bold; margin: 0 0 0.75rem 0; }
-.settings-title { font-size: 1.25rem; font-weight: 800; margin: 0; }
-
-.input-field {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--border-light);
-    background: transparent;
-    margin-bottom: 1rem;
-    outline: none;
-    font-weight: 500;
-    color: inherit;
-    box-sizing: border-box;
-}
-
-.dark .input-field { border-color: var(--border-dark); }
-
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
-
-.btn-cancel {
-    padding: 0.5rem 1rem;
-    border-radius: 0.75rem;
-    background-color: var(--border-light);
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    color: inherit;
-}
-
-.dark .btn-cancel { background-color: var(--border-dark); }
-
-.btn-save {
-    padding: 0.5rem 1rem;
-    border-radius: 0.75rem;
-    background-color: #111827;
-    color: white;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-}
-
-.dark .btn-save { background-color: white; color: #111827; }
-
-/* ... Ajoute les autres petits détails comme le brand text "from Flow Lab" ici ... */
 .brand-text {
     text-align: center;
     font-size: 0.65rem;
@@ -482,18 +402,17 @@ body.app-body {
 
 <body class="app-body">
 
-    <!-- SIDEBAR -->
     <div id="sidebar" class="sidebar">
         <div class="sidebar-header">
             <div>
                 <h2 class="app-title">Llink</h2>
                 <div class="app-subtitle">IA chat/traduction</div>
             </div>
-            <button class="btn-icon-round lg-hidden" onclick="toggleSidebar()"><i data-lucide="x"></i></button>
+            <button class="btn-icon-round lg:hidden" onclick="toggleSidebar()"><i data-lucide="x"></i></button>
         </div>
         
         <div style="padding: 1rem;">
-            <button class="btn-new-chat" onclick="newConversation()">
+            <button class="btn-new-chat" onclick="window.newConversation()">
                 <i data-lucide="plus"></i> Nouvelle discussion
             </button>
         </div>
@@ -509,11 +428,10 @@ body.app-body {
         </div>
     </div>
 
-    <!-- MAIN APP LAYOUT -->
     <div class="main-layout">
         <header class="top-header">
             <div class="header-actions">
-                <button class="btn-icon-round lg-hidden" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+                <button class="btn-icon-round lg:hidden" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                 <button id="auth-btn" onclick="handleAuth()" class="btn-icon-round primary">
                     <i data-lucide="log-in"></i>
                 </button>
@@ -523,26 +441,29 @@ body.app-body {
             </div>
             <div class="header-actions">
                 <button onclick="toggleOnline()" class="btn-icon-round">
-                    <span id="network-status" class="status-dot"></span>
+                    <span id="network-status" class="status-dot bg-green-500"></span>
                 </button>
             </div>
         </header>
 
         <div id="lang-bar" class="lang-bar hidden">
             <select id="source-lang" class="lang-select">
-                <option value="fr">Français</option><option value="en">Anglais</option>
-                <option value="sw">Swahili</option><option value="ln">Lingala</option>
+                <option value="fr">Français</option>
+                <option value="en">Anglais</option>
+                <option value="sw">Swahili</option>
+                <option value="ln">Lingala</option>
             </select>
             <i data-lucide="arrow-right-left" style="width:1rem; color:gray;"></i>
             <select id="target-lang" class="lang-select">
-                <option value="en">Anglais</option><option value="fr">Français</option>
-                <option value="sw">Swahili</option><option value="ln">Lingala</option>
+                <option value="en">Anglais</option>
+                <option value="fr">Français</option>
+                <option value="sw">Swahili</option>
+                <option value="ln">Lingala</option>
             </select>
         </div>
 
         <div id="chat-window" class="chat-window no-scrollbar"></div>
 
-        <!-- INPUT AREA -->
         <div class="input-container">
             <div class="input-box">
                 <div id="pro-alert" class="alert-pro hidden">
@@ -567,33 +488,68 @@ body.app-body {
         </div>
     </div>
 
+    <div style="display: none;">
+        <input type="file" id="file-in" accept="image/*">
+        <input type="file" id="camera-in" accept="image/*" capture="environment">
+        
+        <div id="media-menu" style="display: none;"></div>
+        
+        <div id="settings-modal" style="display: none;">
+            <div class="bg-white p-4 rounded">
+                <textarea id="pref-input"></textarea>
+                <button onclick="savePreferences()">Sauvegarder</button>
+                <div id="subscription-info"></div>
+                <input type="text" id="transaction-id">
+                <button onclick="submitSubscription()">Valider</button>
+                <button onclick="closeSettings()">Fermer</button>
+            </div>
+        </div>
+
+        <div id="rename-modal" style="display: none;">
+            <input type="text" id="rename-input">
+            <button onclick="window.saveChatName()">OK</button>
+            <button onclick="window.closeModal('rename-modal')">Annuler</button>
+        </div>
+    </div>
+
     <script type="module">
         import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers';
         
-        // CONFIGURATION OFFLINE STRICTE
+        // CONFIGURATION OFFLINE COMPATIBLE SMARTPHONE (CAPACITOR)
         env.allowLocalModels = true; 
-        env.allowRemoteModels = false; // Ne cherche plus sur HuggingFace
-        env.localModelPath = '/models/'; // Le dossier de tes modèles à la racine de ton site web
+        env.allowRemoteModels = false; 
+        env.localModelPath = './models/'; // Chemin relatif obligatoire pour le local natif Android
 
         window.generateOfflineText = async (prompt, loadingId) => {
             try {
                 if(!window.localAI) {
-                    document.getElementById(loadingId).querySelector('.msg-content').innerHTML = `<span class="text-[0.75rem] font-bold animate-pulse">📥 Initialisation du moteur neuronal local (depuis /models/)...</span>`;
-                    window.localAI = await pipeline('text-generation', 'SmolLM-135M-Instruct', { device: 'wasm', dtype: 'q4' });
+                    const contentBox = document.getElementById(loadingId).querySelector('.msg-content');
+                    if(contentBox) contentBox.innerHTML = `<span class="text-xs font-bold animate-pulse">📥 Initialisation de l'IA locale (depuis /models/)...</span>`;
+                    
+                    // Alignement exact avec le dossier généré par ton script GitHub Actions
+                    window.localAI = await pipeline('text-generation', 'SmolLM2-135M-Instruct', { device: 'wasm', dtype: 'q4' });
                 }                
-                document.getElementById(loadingId).querySelector('.msg-content').innerHTML = `<span class="text-[0.75rem] font-bold animate-pulse">🧠 Analyse hors-ligne en cours...</span>`;
+                
+                const contentBox = document.getElementById(loadingId).querySelector('.msg-content');
+                if(contentBox) contentBox.innerHTML = `<span class="text-xs font-bold animate-pulse">🧠 Analyse hors-ligne en cours...</span>`;
+                
                 const messages = [{ role: "user", content: prompt }];
-                const out = await window.localAI(messages, { max_new_tokens: 150});
+                const out = await window.localAI(messages, { max_new_tokens: 150 });
+                
                 let response = out[0].generated_text;
                 if(Array.isArray(response)) response = response[response.length - 1].content;
                 return response;
-            } catch (error) { return "❌ Erreur critique mémoire. Vérifiez que le dossier /models/ est bien déployé sur Vercel avec votre code."; }
+            } catch (error) { 
+                console.error(error);
+                return "❌ Erreur critique mémoire. Vérifiez que le dossier /models/SmolLM2-135M-Instruct est correctement déployé dans vos assets."; 
+            }
         };
     </script>
 
     <script type="module">
         import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        
         const firebaseConfig = { 
             apiKey: "AIzaSyDJPf1206nZjpw58OOnCpX4Gq9YFFQ0nUU", 
             authDomain: "llink-ee40e.firebaseapp.com", 
@@ -630,15 +586,14 @@ body.app-body {
                 window.authToken = null; 
                 window.uid = "anonymous";
                 window.isOfflineValid = false;
-                if (authBtn) authBtn.innerHTML = `<i data-lucide="log-in" class="w-[1.25rem] h-[1.25rem]"></i>`;
+                if (authBtn) authBtn.innerHTML = `<i data-lucide="log-in" class="w-5 h-5"></i>`;
                 const historyContainer = document.getElementById('history');
-                if (historyContainer) historyContainer.innerHTML = `<div class="text-center p-[1rem] text-[0.875rem] font-bold text-gray-500 mt-[2.5rem]">Connectez-vous pour l'historique</div>`;
+                if (historyContainer) historyContainer.innerHTML = `<div class="text-center p-4 text-sm font-bold text-gray-500 mt-10">Connectez-vous pour l'historique</div>`;
                 if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") lucide.createIcons();
             }
         });
     </script>
 
-    <script src="script.js" defer>
-    </script>
+    <script src="script.js" defer></script>
 </body>
 </html>
