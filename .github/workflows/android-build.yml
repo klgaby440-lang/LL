@@ -41,7 +41,7 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 ETAPE 2 : Téléchargement du modèle int4 uniquement
+    # 🧠 ETAPE 2 : Téléchargement du modèle 135M (Version q4 pour performances mobiles optimales)
     - name: Download Offline AI Model
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }} 
@@ -51,16 +51,17 @@ jobs:
         import os
         from huggingface_hub import snapshot_download
         
-        repo_id = 'onnx-community/SmolLM2-360M-Instruct-ONNX'
-        local_dir = 'www/models/SmolLM2-360M-Instruct'
+        repo_id = 'onnx-community/SmolLM2-135M-Instruct-ONNX'
+        local_dir = 'www/models/SmolLM2-135M-Instruct'
         
-        print('=== Début du téléchargement du modèle SmolLM2 (Version int4 uniquement) ===')
+        print('=== Début du téléchargement du modèle SmolLM2-135M (Filtre Quantifié) ===')
         
+        # Correction ici : on cible '*q4*.onnx' (ou '*q8*.onnx' si tu veux du 8-bit lourd)
         snapshot_download(
             repo_id=repo_id,
             local_dir=local_dir,
-            allow_patterns=['*q4*.onnx', '*.json', '*.txt'],
-            ignore_patterns=['*fp16*', '*uint8*', '*q8*'],
+            allow_patterns=['*q8*.onnx', '*.json', '*.txt'],
+            ignore_patterns=['*fp16*', '*uint8*', '*q4*'],
             token=os.environ.get('HF_TOKEN')
         )
         
@@ -84,5 +85,5 @@ jobs:
     - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lugalink-android-apk
+        name: delugalink-android-apk
         path: ./android/app/build/outputs/apk/debug/app-debug.apk
