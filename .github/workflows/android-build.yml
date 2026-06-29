@@ -1,7 +1,9 @@
 name: Build Android APK
+
 on:
   push:
     branches: [ main, master ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,7 +26,7 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
-    # 🛠️ ETAPE 1 : Téléchargement des scripts CDN pour ton mode hors-ligne
+    # 🛠️ ETAPE 1 : Téléchargement des scripts CDN pour le mode hors-ligne
     - name: Download External Dependencies
       run: |
         mkdir -p www/offline-assets
@@ -39,7 +41,7 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 ETAPE 2 : Téléchargement CHIRURGICAL du modèle int4 uniquement (Bypass des 5 Go)
+    # 🧠 ETAPE 2 : Téléchargement du modèle int4 uniquement
     - name: Download Offline AI Model
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }} 
@@ -54,12 +56,11 @@ jobs:
         
         print('=== Début du téléchargement du modèle SmolLM2 (Version int4 uniquement) ===')
         
-        # Le filtre magique : Uniquement les fichiers q4, la config JSON et le tokenizer
         snapshot_download(
             repo_id=repo_id,
             local_dir=local_dir,
             allow_patterns=['*q4*.onnx', '*.json', '*.txt'],
-            ignore_patterns=['*fp16*', '*uint8*', '*q8*'], # On bloque explicitement les versions lourdes
+            ignore_patterns=['*fp16*', '*uint8*', '*q8*'],
             token=os.environ.get('HF_TOKEN')
         )
         
@@ -72,18 +73,16 @@ jobs:
     - name: Capacitor Sync
       run: npx cap sync
         
-    # 📦 ETAPE 3 : Compilation Gradle vers APK et AAB
-    - name: Build APK and AAB with Gradle
+    # 📦 ETAPE 3 : Compilation exclusive vers le format APK (Debug)
+    - name: Build APK with Gradle
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug 
-        ./gradlew bundleDebug   
+        ./gradlew assembleDebug
 
+    # 💾 ETAPE 4 : Upload unique du fichier APK généré
     - name: Upload App Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lugalink-android-builds
-        path: |
-          ./android/app/build/outputs/apk/debug/app-debug.apk
-          ./android/app/build/outputs/bundle/debug/app-debug.aab
+        name: lugalink-android-apk
+        path: ./android/app/build/outputs/apk/debug/app-debug.apk
