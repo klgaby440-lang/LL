@@ -51,15 +51,15 @@ jobs:
         import os
         from huggingface_hub import snapshot_download
         
-        repo_id = 'onnx-community/SmolLM2-360M-Instruct-ONNX'
-        local_dir = 'www/models/SmolLM2-360M-Instruct'
+        repo_id = 'onnx-community/SmolLM2-135M-Instruct-ONNX'
+        local_dir = 'www/models/SmolLM2-135M-Instruct'
         
         print('=== Début du téléchargement du modèle SmolLM2 (Version int4 uniquement) ===')
         
         snapshot_download(
             repo_id=repo_id,
             local_dir=local_dir,
-            allow_patterns=['*q4*.onnx', '*.json', '*.txt'],
+            allow_patterns=['*int8*.onnx', '*.json', '*.txt'],
             ignore_patterns=['*fp16*', '*uint8*', '*q8*'],
             token=os.environ.get('HF_TOKEN')
         )
