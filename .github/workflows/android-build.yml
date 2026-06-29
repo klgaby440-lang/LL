@@ -41,7 +41,7 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 ETAPE 2 : Téléchargement du modèle int8 uniquement
+    # 🧠 ETAPE 2 : Téléchargement du modèle int4 uniquement
     - name: Download Offline AI Model
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }} 
@@ -51,16 +51,16 @@ jobs:
         import os
         from huggingface_hub import snapshot_download
         
-        repo_id = 'onnx-community/SmolLM2-135M-Instruct-ONNX'
-        local_dir = 'www/models/SmolLM2-135M-Instruct'
+        repo_id = 'onnx-community/SmolLM2-360M-Instruct-ONNX'
+        local_dir = 'www/models/SmolLM2-360M-Instruct'
         
         print('=== Début du téléchargement du modèle SmolLM2 (Version int4 uniquement) ===')
         
         snapshot_download(
             repo_id=repo_id,
             local_dir=local_dir,
-            allow_patterns=['*q8*.onnx', '*.json', '*.txt'],
-            ignore_patterns=['*fp16*', '*uint8*', '*q4*'],
+            allow_patterns=['*q4*.onnx', '*.json', '*.txt'],
+            ignore_patterns=['*fp16*', '*uint8*', '*q8*'],
             token=os.environ.get('HF_TOKEN')
         )
         
