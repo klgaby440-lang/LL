@@ -41,7 +41,7 @@ jobs:
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/dexie/dist/dexie.js|./offline-assets/dexie.js|g' {} +
         find . -name "*.html" -exec sed -i 's|https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js|./offline-assets/tesseract.min.js|g' {} +
 
-    # 🧠 ETAPE 2 : Téléchargement du modèle int4 uniquement
+    # 🧠 ETAPE 2 : Téléchargement du modèle int8 uniquement
     - name: Download Offline AI Model
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }} 
