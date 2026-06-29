@@ -60,7 +60,7 @@ jobs:
         snapshot_download(
             repo_id=repo_id,
             local_dir=local_dir,
-            allow_patterns=['*q8*.onnx', '*.json', '*.txt'],
+            allow_patterns=['*int8*.onnx', '*.json', '*.txt'],
             ignore_patterns=['*fp16*', '*uint8*', '*q4*'],
             token=os.environ.get('HF_TOKEN')
         )
