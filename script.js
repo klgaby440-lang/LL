@@ -19,12 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function savePreferences() { 
-    const prefInput = document.getElementById('pref-input');
-    if (prefInput) {
-        localStorage.setItem('llink_prefs', prefInput.value); 
-        alert("Préférences sauvegardées !"); 
-        toggleSettingPanel('panel-pref');
-    }
+    localStorage.setItem('llink_prefs', document.getElementById('pref-input').value); 
+    alert("Préférences sauvegardées !"); 
+    toggleSettingPanel('panel-pref');
 }
 
 // Vérification de l'abonnement et de la validité hors-ligne
@@ -43,15 +40,13 @@ window.checkSubscription = async () => {
         window.isOfflineValid = data.isValid;
         const infoDiv = document.getElementById('subscription-info');
         
-        if (infoDiv) {
-            if(data.isValid && data.isTrial) {
-                infoDiv.innerHTML = `🟢 Période d'essai valide jusqu'au : ${new Date(data.expirationDate).toLocaleDateString()}`;
-            } else if(data.isValid && !data.isTrial) {
-                infoDiv.innerHTML = `💎 Abonnement Pro valide jusqu'au : ${new Date(data.expirationDate).toLocaleDateString()}`;
-            } else { 
-                infoDiv.innerHTML = `🔴 Accès Hors-Ligne expiré.`; 
-                window.isOfflineValid = false; 
-            }
+        if(data.isValid && data.isTrial) {
+            infoDiv.innerHTML = `🟢 Période d'essai valide jusqu'au : ${new Date(data.expirationDate).toLocaleDateString()}`;
+        } else if(data.isValid && !data.isTrial) {
+            infoDiv.innerHTML = `💎 Abonnement Pro valide jusqu'au : ${new Date(data.expirationDate).toLocaleDateString()}`;
+        } else { 
+            infoDiv.innerHTML = `🔴 Accès Hors-Ligne expiré.`; 
+            window.isOfflineValid = false; 
         }
         
         updateOfflineUI();
@@ -62,14 +57,10 @@ window.checkSubscription = async () => {
 
 async function submitSubscription() {
     if(!window.isLoggedIn) { alert("Vous devez être connecté pour vous abonner."); return; }
-    const txIdInput = document.getElementById('transaction-id');
-    if(!txIdInput) return;
-    const txId = txIdInput.value.trim();
+    const txId = document.getElementById('transaction-id').value.trim();
     if(!txId) return;
     
-    const infoDiv = document.getElementById('subscription-info');
-    if (infoDiv) infoDiv.innerText = "Vérification en cours...";
-    
+    document.getElementById('subscription-info').innerText = "Vérification en cours...";
     try {
         const res = await fetch(`${SERVER_URL}/api/verify-payment`, {
             method: 'POST', 
@@ -80,7 +71,7 @@ async function submitSubscription() {
         if(data.success) { 
             alert("Paiement validé avec succès !"); 
             await window.checkSubscription(); 
-            txIdInput.value = ''; 
+            document.getElementById('transaction-id').value = ''; 
         } else {
             alert("Erreur : ID de transaction invalide.");
         }
@@ -121,12 +112,10 @@ window.restoreHistory = async () => {
 
 function updateOfflineUI() {
     const alertBox = document.getElementById('pro-alert');
-    if (alertBox) {
-        if(!window.isOnline && !window.isOfflineValid) {
-            alertBox.classList.remove('hidden');
-        } else {
-            alertBox.classList.add('hidden');
-        }
+    if(!window.isOnline && !window.isOfflineValid) {
+        alertBox.classList.remove('llink-hidden');
+    } else {
+        alertBox.classList.add('llink-hidden');
     }
 }
 
@@ -137,51 +126,44 @@ window.toggleOnline = () => {
     const micBtn = document.getElementById('mic-btn');
     
     if(window.isOnline) {
-        if(dot) dot.className = "status-dot bg-green-500";
-        if(modelSel) { modelSel.disabled = false; modelSel.style.opacity = 1; }
-        if(micBtn) { micBtn.disabled = false; micBtn.style.opacity = 1; }
+        dot.className = "llink-status-online";
+        modelSel.disabled = false; 
+        modelSel.style.opacity = 1;
+        micBtn.disabled = false; 
+        micBtn.style.opacity = 1;
     } else {
-        if(dot) dot.className = "status-dot bg-red-500";
-        if(modelSel) { modelSel.disabled = true; modelSel.style.opacity = 0.5; }
-        if(micBtn) { micBtn.disabled = true; micBtn.style.opacity = 0.5; }
+        dot.className = "llink-status-offline";
+        modelSel.disabled = true; 
+        modelSel.style.opacity = 0.5;
+        micBtn.disabled = true; 
+        micBtn.style.opacity = 0.5;
         if(!window.isLoggedIn) alert("Vous devez être connecté pour vérifier l'accès au mode Hors-Ligne.");
     }
     updateOfflineUI();
 };
 
 // Fonctions d'interface utilisateur
-function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+function toggleTheme() { document.documentElement.classList.toggle('dark-theme'); }
 function openSettings() { 
-    const modal = document.getElementById('settings-modal');
-    if(modal) modal.style.display = 'flex'; 
-    if(window.innerWidth < 1024) toggleSidebar(); 
+    document.getElementById('settings-modal').style.display = 'flex'; 
+    if(window.innerWidth < 768) toggleSidebar(); 
 }
-function closeSettings() { 
-    const modal = document.getElementById('settings-modal');
-    if(modal) modal.style.display = 'none'; 
-}
+function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 function toggleSettingPanel(id) { 
     const p = document.getElementById(id); 
-    if(p) p.style.display = p.style.display === 'block' ? 'none' : 'block'; 
+    p.style.display = p.style.display === 'block' ? 'none' : 'block'; 
 }
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('llink-sidebar-hidden'); }
 function toggleMediaMenu() { 
     const m = document.getElementById('media-menu'); 
-    if(m) m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; 
+    m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; 
 }
-function triggerInput(id) { 
-    const input = document.getElementById(id);
-    if(input) input.click(); 
-    toggleMediaMenu(); 
-}
+function triggerInput(id) { document.getElementById(id).click(); toggleMediaMenu(); }
 function scrollToBottom() { 
     const w = document.getElementById('chat-window'); 
-    if(w) w.scrollTop = w.scrollHeight; 
+    w.scrollTop = w.scrollHeight; 
 }
-window.closeModal = (id) => { 
-    const modal = document.getElementById(id);
-    if(modal) modal.style.display = 'none'; 
-};
+window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
 
 async function toggleMode() {
     currentMode = currentMode === 'chat' ? 'translate' : 'chat';
@@ -189,41 +171,56 @@ async function toggleMode() {
     const lang = document.getElementById('lang-bar');
     
     if(currentMode === 'chat') { 
-        if(btn) btn.innerHTML = '<i data-lucide="message-square"></i>'; 
-        if(lang) { lang.classList.add('hidden'); lang.classList.remove('flex'); }
+        btn.innerHTML = '<i data-lucide="message-square" class="llink-icon-standard"></i>'; 
+        lang.classList.add('llink-hidden'); 
+        lang.classList.remove('llink-flex'); 
     } else { 
-        if(btn) btn.innerHTML = '<i data-lucide="languages" class="text-blue-500"></i>'; 
-        if(lang) { lang.classList.remove('hidden'); lang.classList.add('flex'); }
+        btn.innerHTML = '<i data-lucide="languages" class="llink-icon-active"></i>'; 
+        lang.classList.remove('llink-hidden'); 
+        lang.classList.add('llink-flex'); 
     }
-    if(typeof lucide !== 'undefined') lucide.createIcons(); 
-    window.newConversation(); 
+    lucide.createIcons(); 
+    await newConversation(); 
     window.loadHistory();
 }
 
 window.newConversation = () => {
     curChatId = null;
     const w = document.getElementById('chat-window');
-    if(!w) return;
     
     if(currentMode === 'translate') {
         w.innerHTML = `
-            <div id="empty-state" class="text-center py-12">
-                <h1 class="text-3xl font-extrabold bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">Llink Traduction</h1>
-                <p class="text-gray-500 mt-2">Posez vos questions ou lancez une traduction.</p>
+            <div id="empty-state" class="llink-empty-state">
+                <div class="llink-logo-container"><svg class="llink-logo-svg" viewBox="-5 -5 110 110"><circle cx="50" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="50" cy="80" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></div>
+                <h1 class="llink-title-gradient">Llink Traduction</h1>
+                <p class="llink-subtitle">Posez vos questions ou lancez une traduction.</p>
             </div>`;
     } else {
         w.innerHTML = `
-            <div id="empty-state" class="text-center py-12">
-                <h1 class="text-4xl font-extrabold bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent mb-4">Llink</h1>
-                <p class="text-gray-500 mb-8">Posez vos questions ou lancez une discussion.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                    <button onclick="window.sendDirect('🎓 M\\\'aider à apprendre')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-xl text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                        <span class="font-bold text-blue-500 block">🎓 M'aider à apprendre</span>
-                        <span class="text-xs text-gray-500">Générer des explications méthodiques pour vos cours.</span>
+            <div id="empty-state" class="llink-empty-state">
+                <div class="llink-logo-container"><svg width="100" height="100" viewBox="-20 0 100 100"><circle cx="50" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="50" cy="80" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></div>
+                <h1 class="llink-title-gradient">Llink</h1>
+                <p class="llink-subtitle">Posez vos questions ou lancez une traduction.</p>
+                <div class="llink-suggestions-grid">
+                    <button onclick="sendDirect('M\\'aider à apprendre')" class="llink-suggestion-btn">
+                        <span class="llink-suggestion-title llink-text-blue">🎓 M'aider à apprendre</span>
+                        <span class="llink-suggestion-desc">Générer des explications méthodiques pour vos cours avec des exercices adaptés.</span>
                     </button>
-                    <button onclick="window.sendDirect('✍️ M\\\'aider à rédiger')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-xl text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                        <span class="font-bold text-green-500 block">✍️ M'aider à rédiger</span>
-                        <span class="text-xs text-gray-500">Perfectionnez vos lettres, codes et documents.</span>
+                    <button onclick="sendDirect('M\\'aider à rédiger')" class="llink-suggestion-btn">
+                        <span class="llink-suggestion-title llink-text-green">✍️ M'aider à rédiger</span>
+                        <span class="llink-suggestion-desc">Perfectionnez vos lettres, codes sources et autres documents écrits.</span>
+                    </button>
+                    <button onclick="sendDirect('Discuter de quelque chose')" class="llink-suggestion-btn">
+                        <span class="llink-suggestion-title llink-text-purple">💬 Discuter de quelque chose</span>
+                        <span class="llink-suggestion-desc">Explorer des thématiques et des sujets qui vous passionnent.</span>
+                    </button>
+                    <button onclick="sendDirect('Me surprendre')" class="llink-suggestion-btn">
+                        <span class="llink-suggestion-title llink-text-orange">✨ Me surprendre</span>
+                        <span class="llink-suggestion-desc">Laissez Llink vous surprendre avec quelque chose d'inattendu.</span>
+                    </button>
+                    <button onclick="sendDirect('Comment utiliser Llink ?')" class="llink-suggestion-btn llink-col-span-full">
+                        <span class="llink-suggestion-title llink-text-darkblue">🚀 Comment utiliser</span>
+                        <span class="llink-suggestion-desc">Comprendre en quoi Llink diffère des IA actuelles et comment l'utiliser.</span>
                     </button>
                 </div>
             </div>`;
@@ -233,43 +230,31 @@ window.newConversation = () => {
 window.loadHistory = async () => {
     if(!window.isLoggedIn) return;
     const h = await db.chats.where('mode').equals(currentMode).reverse().toArray();
-    const historyDiv = document.getElementById('history');
-    if(!historyDiv) return;
-
-    if(h.length === 0) {
-        historyDiv.innerHTML = `<div class="text-center p-4 text-sm font-bold text-gray-500 mt-10">Aucun historique</div>`;
-        return;
-    }
-
-    historyDiv.innerHTML = h.map(c => 
-        `<div class="flex items-center justify-between p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg cursor-pointer group">
-            <div class="flex-grow truncate text-sm font-medium" onclick="window.switchChat(${c.id})">${c.title}</div>
-            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                <i data-lucide="edit-2" class="w-4 h-4 text-gray-500 hover:text-blue-500" onclick="window.openRenameModal(${c.id}, \`${c.title.replace(/`/g, "")}\`, event)"></i>
-                <i data-lucide="trash-2" class="w-4 h-4 text-gray-500 hover:text-red-500" onclick="window.deleteChat(${c.id}, event)"></i>
+    document.getElementById('history').innerHTML = h.map(c => 
+        `<div class="llink-history-item">
+            <div class="llink-history-title" onclick="switchChat(${c.id})">${c.title}</div>
+            <div class="llink-history-actions">
+                <i data-lucide="edit-2" class="llink-icon-edit" onclick="openRenameModal(${c.id}, \`${c.title.replace(/`/g, "")}\`, event)"></i>
+                <i data-lucide="trash-2" class="llink-icon-delete" onclick="deleteChat(${c.id}, event)"></i>
             </div>
         </div>`
     ).join('');
-    if(typeof lucide !== 'undefined') lucide.createIcons();
+    lucide.createIcons();
 };
 
 window.openRenameModal = (id, currentTitle, event) => {
     if(event) event.stopPropagation();
     chatToRename = id;
-    const input = document.getElementById('rename-input');
-    const modal = document.getElementById('rename-modal');
-    if(input) input.value = currentTitle;
-    if(modal) modal.style.display = 'flex';
+    document.getElementById('rename-input').value = currentTitle;
+    document.getElementById('rename-modal').style.display = 'flex';
 };
 
 window.saveChatName = async () => {
-    const input = document.getElementById('rename-input');
-    if (!input || !chatToRename) return;
-    const newTitle = input.value.trim();
-    if (newTitle) {
+    const newTitle = document.getElementById('rename-input').value.trim();
+    if (newTitle && chatToRename) {
         await db.chats.update(chatToRename, { title: newTitle });
         window.loadHistory();
-        window.closeModal('rename-modal');
+        closeModal('rename-modal');
         const fullChat = await db.chats.get(chatToRename);
         fullChat.messages = await db.msgs.where('chatId').equals(chatToRename).toArray();
         await syncChatToServer(fullChat);
@@ -279,11 +264,9 @@ window.saveChatName = async () => {
 window.switchChat = async (id) => {
     curChatId = id;
     const m = await db.msgs.where('chatId').equals(id).toArray();
-    const w = document.getElementById('chat-window');
-    if(!w) return;
-    w.innerHTML = "";
+    document.getElementById('chat-window').innerHTML = "";
     m.forEach(msg => renderMessage(msg.text, msg.role));
-    if(window.innerWidth < 1024) toggleSidebar();
+    if(window.innerWidth < 768) toggleSidebar();
 };
 
 window.deleteChat = async (id, event) => { 
@@ -291,7 +274,7 @@ window.deleteChat = async (id, event) => {
     if(confirm("Supprimer la discussion ?")) { 
         await db.chats.delete(id);
         await db.msgs.where('chatId').equals(id).delete();
-        if(curChatId === id) window.newConversation(); 
+        if(curChatId === id) newConversation(); 
         window.loadHistory(); 
     } 
 };
@@ -300,61 +283,61 @@ function parseMarkdown(text) {
     if(!text) return "";
     let html = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
     html = html.replace(/```([\s\S]*?)```/g, function(m, p1){ 
-        return `<div class="bg-gray-900 text-gray-100 p-3 rounded-lg my-2 overflow-x-auto relative"><button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); this.innerText='Copié!'; setTimeout(()=>this.innerText='Copier',2000);" class="absolute right-2 top-2 bg-gray-800 text-xs px-2 py-1 rounded text-gray-400">Copier</button><pre><code>${p1}</code></pre></div>`; 
+        return `<div class="llink-code-block"><button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); this.innerText='Copié!'; setTimeout(()=>this.innerText='Copier',2000);" class="llink-copy-code-btn">Copier</button><pre><code>${p1}</code></pre></div>`; 
     });
     html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>'); 
     html = html.replace(/\n/g, '<br>'); 
     return html;
 }
 
+// ================= INJECTION DES MESSAGES =================
 function renderMessage(txt, role, id="") {
     const w = document.getElementById('chat-window');
-    if(!w) return;
     const html = parseMarkdown(txt);
     const safeTxt = encodeURIComponent(txt);
     
     const actionBtns = `
-        <div class="flex gap-2 mt-1 justify-end opacity-60 hover:opacity-100 transition">
-            <button onclick="navigator.clipboard.writeText(decodeURIComponent('${safeTxt}')); alert('Copié !')" class="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded"><i data-lucide="copy" class="w-3 h-3"></i></button>
+        <div class="llink-msg-actions">
+            <button onclick="navigator.clipboard.writeText(decodeURIComponent('${safeTxt}')); this.innerHTML='<i data-lucide=\\'check\\' class=\\'llink-icon-success\\'></i>'; setTimeout(() => { this.innerHTML='<i data-lucide=\\'copy\\' class=\\'llink-icon-standard\\'></i>'; lucide.createIcons(); }, 2000);" title="Copier" class="llink-action-btn"><i data-lucide="copy" class="llink-icon-standard"></i></button>
+            <button onclick="if(navigator.share) { navigator.share({title: 'Llink', text: decodeURIComponent('${safeTxt}')}) } else { alert('Partage non supporté.'); }" title="Partager" class="llink-action-btn"><i data-lucide="share-2" class="llink-icon-standard"></i></button>
         </div>
     `;
 
     if(role === 'user') {
         w.insertAdjacentHTML('beforeend', `
-            <div class="flex flex-col items-end mb-4" id="${id}">
-                <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none max-w-[85%]">${html}</div>
+            <div class="llink-msg-wrapper llink-align-right" id="${id}">
+                <div class="llink-msg-bubble-user msg-content">${html}</div>
                 ${actionBtns}
             </div>`);
     } else {
         w.insertAdjacentHTML('beforeend', `
-            <div class="flex flex-col items-start mb-4" id="${id}">
-                <div class="flex items-center gap-2 mb-1 text-xs font-bold opacity-70">
-                    <span class="text-red-500">LLINK</span>
+            <div class="llink-msg-wrapper llink-align-left" id="${id}">
+                <div class="llink-bot-header">
+                    <div class="llink-bot-avatar">
+                        <svg viewBox="-5 -5 110 110" class="llink-logo-svg"><circle cx="50" cy="20" r="18" fill="none" stroke="#FF5733" stroke-width="8"/><circle cx="76" cy="35" r="18" fill="none" stroke="#33FF57" stroke-width="8"/><circle cx="76" cy="65" r="18" fill="none" stroke="#3357FF" stroke-width="8"/><circle cx="50" cy="80" r="18" fill="none" stroke="#F333FF" stroke-width="8"/><circle cx="24" cy="65" r="18" fill="none" stroke="#FFBD33" stroke-width="8"/><circle cx="24" cy="35" r="18" fill="none" stroke="#33FFF3" stroke-width="8"/></svg>
+                    </div>
+                    <span class="llink-bot-name">LLINK</span>
                 </div>
-                <div class="bg-gray-200 dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none max-w-[85%] msg-content">${html}</div>
+                <div class="llink-msg-bubble-bot msg-content">${html}</div>
                 ${actionBtns}
             </div>`);
     }
-    if(typeof lucide !== 'undefined') lucide.createIcons(); 
+    lucide.createIcons(); 
     scrollToBottom();
 }
 
 window.sendDirect = (txt) => { 
-    const input = document.getElementById('user-msg');
-    if(input) {
-        input.value = txt; 
-        window.sendFromInput(); 
-    }
+    document.getElementById('user-msg').value = txt; 
+    sendFromInput(); 
 };
 
 window.sendFromInput = async () => {
     const input = document.getElementById('user-msg');
-    if(!input) return;
     const txt = input.value;
     if(!txt.trim()) return; 
     
     input.value = ''; 
-    input.style.height = 'auto'; 
+    input.style.height = 'auto'; // Reset de la hauteur après envoi
     
     if(!curChatId) { 
         curChatId = await db.chats.add({title: txt.substring(0,20), time: Date.now(), mode: currentMode}); 
@@ -369,19 +352,14 @@ window.sendFromInput = async () => {
     
     const loadId = "load-" + Date.now(); 
     renderMessage("Réflexion...", 'bot', loadId);
-    
-    const loadElem = document.getElementById(loadId);
-    if(!loadElem) return;
-    const contentDiv = loadElem.querySelector('.msg-content');
+    const contentDiv = document.getElementById(loadId).querySelector('.msg-content');
     let fullReply = "";
 
+    // ================= LOGIQUE EN LIGNE / HORS-LIGNE COMPLÉTÉE =================
     if(window.isOnline) {
         try {
             const prefs = localStorage.getItem('llink_prefs') || "";
-            const modelSelector = document.getElementById('model-selector');
-            const selectedModel = modelSelector ? modelSelector.value : "gemini-1.5-flash";
-            
-            const payload = { message: txt, mode: currentMode, model: selectedModel, preferences: prefs };
+            const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs };
             const res = await fetch(`${SERVER_URL}/api/chat`, { 
                 method: 'POST', 
                 body: JSON.stringify(payload), 
@@ -403,106 +381,83 @@ window.sendFromInput = async () => {
             contentDiv.innerHTML = fullReply; 
         }
     } else {
-        // --- PASSAGE MAÎTRE PAR LA LOGIQUE MODULE DU HTML ---
+        // --- LOGIQUE HORS-LIGNE COMPLÈTE ---
         if(!window.isOfflineValid) {
             fullReply = "❌ Votre abonnement pro a expiré. Mode hors-ligne indisponible.";
             contentDiv.innerHTML = fullReply;
-        } else if(typeof window.generateOfflineText === "function") {
-            fullReply = await window.generateOfflineText(txt, loadId);
-            contentDiv.innerHTML = parseMarkdown(fullReply);
-            scrollToBottom();
+        } else if(window.localAI) {
+            try {
+                contentDiv.innerHTML = "Génération locale en cours...";
+                const messages = [{ role: "user", content: txt }];
+                
+                // Exécution du modèle ONNX (Transformers.js)
+                const output = await window.localAI(messages, {
+                    max_new_tokens: 256,
+                    temperature: 0.7
+                });
+                
+                fullReply = output[0].generated_text[output[0].generated_text.length - 1].content || output[0].generated_text;
+                contentDiv.innerHTML = parseMarkdown(fullReply);
+                scrollToBottom();
+            } catch(e) {
+                console.error(e);
+                fullReply = "❌ Erreur critique lors de la génération avec le modèle local.";
+                contentDiv.innerHTML = fullReply;
+            }
         } else {
-            fullReply = "❌ Échec de liaison avec le module IA local.";
+            fullReply = "⏳ Le modèle d'intelligence artificielle local est toujours en cours de chargement en arrière-plan. Veuillez patienter.";
             contentDiv.innerHTML = fullReply;
         }
     }
     
+    // Sauvegarde du message bot généré
     if(window.isLoggedIn && fullReply) {
         await db.msgs.add({chatId: curChatId, role: 'bot', text: fullReply});
     }
 };
 
-// ================= MEDIA LOGIC =================
-let isRecording = false;
-let mediaRecorder;
-let audioChunks = [];
+        // ================= MEDIA LOGIC =================
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+        window.handleImageUpload = async (e) => {
+            const f = e.target.files[0];
+            if(!f) return; toggleMediaMenu();
+            if(!window.isOnline) {
+                renderMessage("OCR Local...", 'bot', 'ocr-load');
+                const {data:{text}} = await Tesseract.recognize(f, 'fra+eng');
+                document.getElementById('ocr-load').remove(); sendDirect("Analyse cette image: " + text); return;
+            }
+            const reader = new FileReader(); reader.readAsDataURL(f);
+            reader.onload = async () => {
+                renderMessage("Analyse d'image Cloud...", 'bot', 'ocr-load');
+                try {
+                    const res = await fetch(`${SERVER_URL}/api/ocr`, { method: 'POST', body: JSON.stringify({imageBase64: reader.result}), headers: {"Content-Type":"application/json"} });
+                    const data = await res.json(); document.getElementById('ocr-load').remove(); sendDirect("Analyse: " + data.response);
+                } catch(e) { document.getElementById('ocr-load').remove(); alert("Erreur OCR"); }
+            }; e.target.value = '';
+        };
 
-window.handleImageUpload = async (e) => {
-    const f = e.target.files[0];
-    if(!f) return; 
-    toggleMediaMenu();
-    if(!window.isOnline) {
-        renderMessage("OCR Local...", 'bot', 'ocr-load');
-        if(typeof Tesseract !== 'undefined') {
-            const {data:{text}} = await Tesseract.recognize(f, 'fra+eng');
-            const loadOcr = document.getElementById('ocr-load');
-            if(loadOcr) loadOcr.remove(); 
-            window.sendDirect("Analyse cette image: " + text); 
-        } else {
-            alert("Moteur OCR non chargé.");
-        }
-        return;
-    }
-    const reader = new FileReader(); 
-    reader.readAsDataURL(f);
-    reader.onload = async () => {
-        renderMessage("Analyse d'image Cloud...", 'bot', 'ocr-load');
-        try {
-            const res = await fetch(`${SERVER_URL}/api/ocr`, { method: 'POST', body: JSON.stringify({imageBase64: reader.result}), headers: {"Content-Type":"application/json"} });
-            const data = await res.json(); 
-            const loadOcr = document.getElementById('ocr-load');
-            if(loadOcr) loadOcr.remove(); 
-            window.sendDirect("Analyse: " + data.response);
-        } catch(e) { 
-            const loadOcr = document.getElementById('ocr-load');
-            if(loadOcr) loadOcr.remove(); 
-            alert("Erreur OCR Cloud"); 
-        }
-    }; 
-    e.target.value = '';
-};
+        window.handleVoice = async () => {
+            if(!window.isOnline) { alert("Le micro est désactivé hors-ligne."); return; }
+            if(!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                    mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = async () => {
+                        const blob = new Blob(audioChunks, {type:'audio/wav'});
+                        const form = new FormData(); form.append("file", blob);
+                        try { const res = await fetch(`${SERVER_URL}/api/audio`, {method:'POST', body:form});
+                        const data = await res.json(); if(data.text) sendDirect(data.text); } catch(e){ alert("Erreur serveur audio."); }
+                    };
+                    mediaRecorder.start(); isRecording = true; document.getElementById('mic-btn').classList.add('text-red-500', 'animate-pulse');
+                } catch(e) { alert("Refus d'accès micro."); }
+            } else { mediaRecorder.stop(); isRecording = false; document.getElementById('mic-btn').classList.remove('text-red-500', 'animate-pulse'); }
+        };
 
-window.handleVoice = async () => {
-    if(!window.isOnline) { alert("Le micro est désactivé hors-ligne."); return; }
-    const micBtn = document.getElementById('mic-btn');
-    if(!isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-            mediaRecorder = new MediaRecorder(stream); 
-            audioChunks = [];
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            mediaRecorder.onstop = async () => {
-                const blob = new Blob(audioChunks, {type:'audio/wav'});
-                const form = new FormData(); 
-                form.append("file", blob);
-                try { 
-                    const res = await fetch(`${SERVER_URL}/api/audio`, {method:'POST', body:form});
-                    const data = await res.json(); 
-                    if(data.text) window.sendDirect(data.text); 
-                } catch(e){ 
-                    alert("Erreur serveur audio."); 
-                }
-            };
-            mediaRecorder.start(); 
-            isRecording = true; 
-            if(micBtn) micBtn.classList.add('text-red-500', 'animate-pulse');
-        } catch(e) { 
-            alert("Refus d'accès micro."); 
-        }
-    } else { 
-        if(mediaRecorder) mediaRecorder.stop(); 
-        isRecording = false; 
-        if(micBtn) micBtn.classList.remove('text-red-500', 'animate-pulse'); 
-    }
-};
+        document.getElementById('file-in').addEventListener('change', handleImageUpload);
+        document.getElementById('camera-in').addEventListener('change', handleImageUpload);
 
-// Initialisation sécurisée des événements du DOM après chargement
-document.addEventListener('DOMContentLoaded', () => {
-    const fileIn = document.getElementById('file-in');
-    const cameraIn = document.getElementById('camera-in');
-    if(fileIn) fileIn.addEventListener('change', window.handleImageUpload);
-    if(cameraIn) cameraIn.addEventListener('change', window.handleImageUpload);
-    
-    if(typeof lucide !== 'undefined') lucide.createIcons(); 
-    window.newConversation();
-});
+        lucide.createIcons(); 
+        newConversation();
