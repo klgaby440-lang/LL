@@ -30,540 +30,176 @@
     </script>
  
     <style>
-        /* =========================================
-   VARIABLES & CONFIGURATION GLOBALE
-   ========================================= */
-:root {
-    /* Couleurs claires */
-    --campagne-light: #FDFBF7;
-    --surface-light: #EFECE6;
-    --userBg-light: #E3DFD5;
-    --text-light: #111827; /* gray-900 */
-    --border-light: #d1d5db; /* gray-300 */
-    
-    /* Couleurs sombres */
-    --campagne-dark: #131314;
-    --surface-dark: #1E1F20;
-    --userBg-dark: #2B2C2F;
-    --text-dark: #f3f4f6; /* gray-100 */
-    --border-dark: #1f2937; /* gray-800 */
-}
+        @keyframes logoBlink {
+            0% { filter: brightness(1); opacity: 1; }
+            50% { filter: brightness(0.4); opacity: 0.6; }
+            100% { filter: brightness(1); opacity: 1; }
+        }
+        .logo-anim { animation: logoBlink 2.5s infinite; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* CORRECTIF RESPONSIVE DU LOGO */
+        .logo-llink {
+            width: 100%;
+            max-width: 8rem; /* Remplace les tailles en px par des rem */
+            height: auto;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        @media (max-width: 768px) {
+            .logo-llink {
+                max-width: 5rem; /* Réduit la taille max sur mobile */
+            }
+        }
 
-html.h-full, body.app-body {
-    height: 100%;
-}
-
-body.app-body {
-    background-color: var(--campagne-light);
-    color: var(--text-light);
-    display: flex;
-    transition: background-color 0.3s, color 0.3s;
-    font-family: sans-serif;
-    margin: 0;
-}
-
-.dark body.app-body {
-    background-color: var(--campagne-dark);
-    color: var(--text-dark);
-}
-
-/* =========================================
-   UTILITAIRES
-   ========================================= */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.hidden { display: none !important; }
-.flex-grow { flex-grow: 1; }
-
-/* =========================================
-   SIDEBAR
-   ========================================= */
-.sidebar {
-    position: fixed;
-    top: 0; bottom: 0; left: 0;
-    width: 20rem;
-    background-color: var(--surface-light);
-    z-index: 50;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
-}
-
-.sidebar.open { transform: translateX(0); } /* A gérer dans ton JS si tu ajoutes cette classe */
-
-.dark .sidebar {
-    background-color: var(--surface-dark);
-}
-
-@media (min-width: 1024px) { /* lg */
-    .sidebar {
-        position: static;
-        transform: translateX(0);
-        box-shadow: none;
-    }
-}
-
-.sidebar-header {
-    padding: 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.dark .sidebar-header { border-bottom-color: var(--border-dark); }
-
-.app-title {
-    font-size: 1.5rem;
-    font-weight: bold;
-    background-image: linear-gradient(to right, #3b82f6, #ef4444);
-    -webkit-background-clip: text;
-    color: transparent;
-    margin: 0;
-}
-
-.app-subtitle {
-    font-size: 0.75rem;
-    color: #6b7280;
-    font-weight: bold;
-    letter-spacing: 0.025em;
-}
-
-.dark .app-subtitle { color: #9ca3af; }
-
-.btn-new-chat {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    background-color: #111827;
-    color: white;
-    padding: 0.75rem 0;
-    border-radius: 9999px;
-    font-weight: bold;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    border: none;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.dark .btn-new-chat {
-    background-color: white;
-    color: #111827;
-}
-
-.btn-new-chat:hover { opacity: 0.9; }
-
-.history-container {
-    padding: 1rem;
-    overflow-y: auto;
-}
-
-.history-empty {
-    text-align: center;
-    padding: 1rem;
-    font-size: 0.875rem;
-    font-weight: bold;
-    color: #6b7280;
-    margin-top: 2.5rem;
-}
-
-.sidebar-footer {
-    padding: 1rem;
-    border-top: 1px solid var(--border-light);
-}
-
-.dark .sidebar-footer { border-top-color: var(--border-dark); }
-
-.btn-settings {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    background: transparent;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-settings:hover { background-color: var(--border-light); }
-.dark .btn-settings:hover { background-color: var(--border-dark); }
-
-/* =========================================
-   MAIN CONTENT & HEADER
-   ========================================= */
-.main-layout {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
-}
-
-.top-header {
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 10;
-}
-
-.header-actions { display: flex; align-items: center; gap: 0.75rem; }
-
-.btn-icon-round {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 9999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-    transition: transform 0.2s, background-color 0.2s;
-    background-color: var(--surface-light);
-    color: inherit;
-}
-
-.dark .btn-icon-round { background-color: var(--surface-dark); }
-.btn-icon-round:hover { transform: scale(1.05); }
-
-.btn-icon-round.primary {
-    background-color: #3b82f6;
-    color: white;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.status-dot {
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 9999px;
-    background-color: #22c55e; /* green-500 */
-    box-shadow: 0 0 8px #34A853;
-}
-
-/* =========================================
-   LANG BAR & CHAT WINDOW
-   ========================================= */
-.lang-bar {
-    display: flex;
-    margin: 0 auto 1rem auto;
-    background-color: var(--surface-light);
-    border-radius: 9999px;
-    padding: 0.5rem 1rem;
-    align-items: center;
-    gap: 0.75rem;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.dark .lang-bar { background-color: var(--surface-dark); }
-
-.lang-select {
-    background: transparent;
-    font-weight: bold;
-    font-size: 0.875rem;
-    outline: none;
-    cursor: pointer;
-    border: none;
-    color: inherit;
-}
-
-.chat-window {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 1rem;
-    max-width: 56rem;
-    margin: 0 auto;
-    width: 100%;
-    scroll-behavior: smooth;
-    box-sizing: border-box;
-}
-
-@media (min-width: 768px) { .chat-window { padding: 2rem; } }
-
-/* =========================================
-   INPUT AREA
-   ========================================= */
-.input-container {
-    padding: 1rem;
-    background: transparent;
-    max-width: 56rem;
-    margin: 0 auto;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.input-box {
-    background-color: var(--surface-light);
-    border-radius: 1rem; /* 2xl */
-    padding: 0.75rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    position: relative;
-}
-
-.dark .input-box { background-color: var(--surface-dark); }
-
-.alert-pro {
-    font-size: 0.75rem;
-    font-weight: bold;
-    text-align: center;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    background-color: #fee2e2; /* red-100 */
-    color: #dc2626; /* red-600 */
-    margin-bottom: 0.25rem;
-}
-
-.dark .alert-pro { background-color: rgba(127, 29, 29, 0.3); color: #f87171; }
-
-.main-textarea {
-    width: 100%;
-    background: transparent;
-    border: none;
-    outline: none;
-    resize: none;
-    padding: 0.5rem;
-    font-size: 1rem;
-    max-height: 10rem;
-    overflow-y: auto;
-    color: inherit;
-    font-family: inherit;
-    box-sizing: border-box;
-}
-
-.input-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 0.5rem;
-}
-
-.input-actions { display: flex; align-items: center; gap: 0.5rem; }
-
-.select-model {
-    background-color: var(--userBg-light);
-    font-size: 0.75rem;
-    font-weight: bold;
-    border-radius: 0.5rem;
-    padding: 0.375rem 0.5rem;
-    outline: none;
-    cursor: pointer;
-    border: none;
-    color: inherit;
-}
-
-.dark .select-model { background-color: var(--userBg-dark); }
-
-.btn-transparent-icon {
-    padding: 0.5rem;
-    border-radius: 9999px;
-    border: none;
-    background: transparent;
-    color: #4b5563; /* gray-600 */
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.dark .btn-transparent-icon { color: #9ca3af; }
-.btn-transparent-icon:hover { background-color: var(--border-light); }
-.dark .btn-transparent-icon:hover { background-color: var(--border-dark); }
-
-.btn-send {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 9999px;
-    background-color: #111827;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.dark .btn-send { background-color: white; color: #111827; }
-.btn-send:hover { transform: scale(1.05); }
-
-/* =========================================
-   MODALS & OVERLAYS
-   ========================================= */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    z-index: 3000;
-}
-
-.modal-box {
-    background-color: var(--campagne-light);
-    width: 100%;
-    max-width: 24rem;
-    border-radius: 1.5rem; /* 3xl */
-    padding: 1.5rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    box-sizing: border-box;
-}
-
-.dark .modal-box { background-color: var(--campagne-dark); }
-
-.settings-box { max-width: 28rem; max-height: 90vh; overflow-y: auto; }
-
-.modal-title { font-size: 1.125rem; font-weight: bold; margin: 0 0 0.75rem 0; }
-.settings-title { font-size: 1.25rem; font-weight: 800; margin: 0; }
-
-.input-field {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--border-light);
-    background: transparent;
-    margin-bottom: 1rem;
-    outline: none;
-    font-weight: 500;
-    color: inherit;
-    box-sizing: border-box;
-}
-
-.dark .input-field { border-color: var(--border-dark); }
-
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
-
-.btn-cancel {
-    padding: 0.5rem 1rem;
-    border-radius: 0.75rem;
-    background-color: var(--border-light);
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    color: inherit;
-}
-
-.dark .btn-cancel { background-color: var(--border-dark); }
-
-.btn-save {
-    padding: 0.5rem 1rem;
-    border-radius: 0.75rem;
-    background-color: #111827;
-    color: white;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-}
-
-.dark .btn-save { background-color: white; color: #111827; }
-
-/* ... Ajoute les autres petits détails comme le brand text "from Flow Lab" ici ... */
-.brand-text {
-    text-align: center;
-    font-size: 0.65rem;
-    font-weight: bold;
-    color: #9ca3af;
-    margin-top: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
+        /* ACTIONS MESSAGES */
+        .msg-actions { opacity: 0; transition: opacity 0.2s ease; }
+        .msg-wrapper:hover .msg-actions { opacity: 1; }
+        @media (max-width: 768px) {
+            .msg-actions { opacity: 1; } /* Visible par défaut sur téléphone */
+        }
     </style>
 </head>
+<body class="bg-campagne-light dark:bg-campagne-dark text-gray-900 dark:text-gray-100 h-full flex transition-colors duration-300 font-sans">
 
-<body class="app-body">
-
-    <!-- SIDEBAR -->
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-header">
+    <div id="sidebar" class="fixed lg:static inset-y-0 left-0 w-[20rem] bg-surface-light dark:bg-surface-dark z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col shadow-2xl lg:shadow-none">
+        <div class="p-[1.5rem] flex justify-between items-center border-b border-gray-300 dark:border-gray-800">
             <div>
-                <h2 class="app-title">Llink</h2>
-                <div class="app-subtitle">IA chat/traduction</div>
+                <h2 class="text-[1.5rem] font-bold bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">Llink</h2>
+                <div class="text-[0.75rem] text-gray-500 dark:text-gray-400 font-bold tracking-wide">IA chat/traduction</div>
             </div>
-            <button class="btn-icon-round lg-hidden" onclick="toggleSidebar()"><i data-lucide="x"></i></button>
+            <button class="p-[0.5rem] rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 lg:hidden" onclick="toggleSidebar()"><i data-lucide="x" class="w-[1.25rem] h-[1.25rem]"></i></button>
         </div>
         
-        <div style="padding: 1rem;">
-            <button class="btn-new-chat" onclick="newConversation()">
-                <i data-lucide="plus"></i> Nouvelle discussion
+        <div class="p-[1rem]">
+            <button class="w-full flex items-center justify-center gap-[0.5rem] bg-gray-900 text-white dark:bg-white dark:text-gray-900 py-[0.75rem] rounded-full font-bold shadow-md hover:opacity-90 transition" onclick="newConversation()">
+                <i data-lucide="plus" class="w-[1.25rem] h-[1.25rem]"></i> Nouvelle discussion
             </button>
         </div>
         
-        <div class="history-container no-scrollbar" id="history">
-            <div class="history-empty">Connectez-vous pour l'historique</div>
+        <div class="flex-grow overflow-y-auto p-[1rem] space-y-[0.5rem] no-scrollbar" id="history">
+            <div class="text-center p-[1rem] text-[0.875rem] font-bold text-gray-500 mt-[2.5rem]">Connectez-vous pour l'historique</div>
         </div>
      
-        <div class="sidebar-footer">
-            <button class="btn-settings" onclick="openSettings()">
-                <i data-lucide="settings"></i> Paramètres et aide
+        <div class="p-[1rem] border-t border-gray-300 dark:border-gray-800">
+            <button class="w-full flex items-center gap-[0.75rem] py-[0.75rem] px-[1rem] rounded-xl hover:bg-gray-300 dark:hover:bg-gray-800 font-semibold transition" onclick="openSettings()">
+                <i data-lucide="settings" class="w-[1.25rem] h-[1.25rem]"></i> Paramètres et aide
             </button>
         </div>
     </div>
 
-    <!-- MAIN APP LAYOUT -->
-    <div class="main-layout">
-        <header class="top-header">
-            <div class="header-actions">
-                <button class="btn-icon-round lg-hidden" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
-                <button id="auth-btn" onclick="handleAuth()" class="btn-icon-round primary">
-                    <i data-lucide="log-in"></i>
+    <div class="flex-grow flex flex-col h-full relative">
+        <header class="p-[1rem] flex justify-between items-center z-10">
+            <div class="flex items-center gap-[0.75rem]">
+                <button class="p-[0.5rem] rounded-full hover:bg-surface-light dark:hover:bg-surface-dark lg:hidden transition" onclick="toggleSidebar()"><i data-lucide="menu" class="w-[1.5rem] h-[1.5rem]"></i></button>
+                <button id="auth-btn" onclick="handleAuth()" class="w-[2.5rem] h-[2.5rem] rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md hover:scale-105 transition">
+                    <i data-lucide="log-in" class="w-[1.25rem] h-[1.25rem]"></i>
                 </button>
-                <button id="mode-btn" onclick="toggleMode()" class="btn-icon-round">
-                    <i data-lucide="message-square"></i>
+                <button id="mode-btn" onclick="toggleMode()" class="w-[2.5rem] h-[2.5rem] rounded-full bg-surface-light dark:bg-surface-dark flex items-center justify-center hover:scale-105 transition">
+                    <i data-lucide="message-square" class="w-[1.25rem] h-[1.25rem]"></i>
                 </button>
             </div>
-            <div class="header-actions">
-                <button onclick="toggleOnline()" class="btn-icon-round">
-                    <span id="network-status" class="status-dot"></span>
+            <div class="flex items-center">
+                <button onclick="toggleOnline()" class="w-[2.5rem] h-[2.5rem] rounded-full bg-surface-light dark:bg-surface-dark flex items-center justify-center hover:scale-105 transition">
+                    <span id="network-status" class="w-[0.875rem] h-[0.875rem] rounded-full bg-green-500 shadow-[0_0_8px_#34A853]"></span>
                 </button>
             </div>
         </header>
 
-        <div id="lang-bar" class="lang-bar hidden">
-            <select id="source-lang" class="lang-select">
-                <option value="fr">Français</option><option value="en">Anglais</option>
-                <option value="sw">Swahili</option><option value="ln">Lingala</option>
-            </select>
-            <i data-lucide="arrow-right-left" style="width:1rem; color:gray;"></i>
-            <select id="target-lang" class="lang-select">
-                <option value="en">Anglais</option><option value="fr">Français</option>
-                <option value="sw">Swahili</option><option value="ln">Lingala</option>
-            </select>
+        <div id="lang-bar" class="hidden mx-auto bg-surface-light dark:bg-surface-dark rounded-full px-[1rem] py-[0.5rem] items-center gap-[0.75rem] shadow-sm mb-[1rem]">
+            <select id="source-lang" class="bg-transparent font-bold text-[0.875rem] outline-none cursor-pointer"><option value="fr">Français</option><option value="en">Anglais</option><option value="sw">Swahili</option><option value="ln">Lingala</option></select>
+            <i data-lucide="arrow-right-left" class="w-[1rem] h-[1rem] text-gray-500"></i>
+            <select id="target-lang" class="bg-transparent font-bold text-[0.875rem] outline-none cursor-pointer"><option value="en">Anglais</option><option value="fr">Français</option><option value="sw">Swahili</option><option value="ln">Lingala</option></select>
         </div>
 
-        <div id="chat-window" class="chat-window no-scrollbar"></div>
+        <div id="chat-window" class="flex-grow overflow-y-auto p-[1rem] md:p-[2rem] space-y-[1.5rem] max-w-[56rem] mx-auto w-full no-scrollbar scroll-smooth"></div>
 
-        <!-- INPUT AREA -->
-        <div class="input-container">
-            <div class="input-box">
-                <div id="pro-alert" class="alert-pro hidden">
+        <div class="p-[1rem] bg-transparent max-w-[56rem] mx-auto w-full">
+            <div class="bg-surface-light dark:bg-surface-dark rounded-2xl p-[0.75rem] shadow-lg flex flex-col gap-[0.5rem] relative">
+                
+                <div id="pro-alert" class="hidden text-[0.75rem] font-bold text-center py-[0.25rem] px-[0.5rem] rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 mb-[0.25rem]">
                     Accès Hors-Ligne expiré ou non abonné.
                 </div>
 
-                <textarea id="user-msg" placeholder="Commencez à discuter..." class="main-textarea no-scrollbar" oninput="this.style.height='3rem';this.style.height=this.scrollHeight+'px'"></textarea>
+                <textarea id="user-msg" placeholder="Commencez à discuter..." class="w-full bg-transparent border-none outline-none resize-none p-[0.5rem] text-[1rem] max-h-[10rem] overflow-y-auto no-scrollbar" oninput="this.style.height='3rem';this.style.height=this.scrollHeight+'px'"></textarea>
                 
-                <div class="input-footer">
-                    <div class="input-actions">
-                        <select id="model-selector" class="select-model">
+                <div class="flex justify-between items-center mt-[0.5rem]">
+                    <div class="flex items-center gap-[0.5rem]">
+                        <select id="model-selector" class="bg-userBg-light dark:bg-userBg-dark text-[0.75rem] font-bold rounded-lg px-[0.5rem] py-[0.375rem] outline-none cursor-pointer">
                             <option value="gemini-1.5-flash">✨ Standard (Gemini)</option>
                             <option value="deepseek-v3">🧠 Réflexion (DeepSeek)</option>
                         </select>
-                        <button onclick="toggleMediaMenu()" class="btn-transparent-icon"><i data-lucide="paperclip"></i></button>
-                        <button id="mic-btn" onclick="handleVoice()" class="btn-transparent-icon"><i data-lucide="mic"></i></button>
+                        <button onclick="toggleMediaMenu()" class="p-[0.5rem] rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition"><i data-lucide="paperclip" class="w-[1.25rem] h-[1.25rem]"></i></button>
+                        <button id="mic-btn" onclick="handleVoice()" class="p-[0.5rem] rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition"><i data-lucide="mic" class="w-[1.25rem] h-[1.25rem]"></i></button>
                     </div>
-                    <button onclick="sendFromInput()" class="btn-send"><i data-lucide="send"></i></button>
+                    <button onclick="sendFromInput()" class="w-[2.5rem] h-[2.5rem] rounded-full bg-gray-900 text-white dark:bg-white dark:text-gray-900 flex items-center justify-center hover:scale-105 transition"><i data-lucide="send" class="w-[1.25rem] h-[1.25rem]"></i></button>
+                </div>
+
+                <div id="media-menu" class="hidden absolute bottom-[4rem] left-[1rem] bg-campagne-light dark:bg-campagne-dark rounded-xl shadow-xl flex-col border border-gray-200 dark:border-gray-800 overflow-hidden z-50">
+                    <button onclick="triggerInput('camera-in')" class="flex items-center gap-[0.75rem] px-[1rem] py-[0.75rem] hover:bg-surface-light dark:hover:bg-surface-dark font-semibold text-[0.875rem] transition"><i data-lucide="camera" class="w-[1rem] h-[1rem]"></i> Prendre photo</button>
+                    <button onclick="triggerInput('file-in')" class="flex items-center gap-[0.75rem] px-[1rem] py-[0.75rem] hover:bg-surface-light dark:hover:bg-surface-dark font-semibold text-[0.875rem] transition"><i data-lucide="image" class="w-[1rem] h-[1rem]"></i> Choisir image</button>
                 </div>
             </div>
-            <div class="brand-text">from Flow Lab</div>
+            <div class="text-center text-[0.65rem] font-bold text-gray-400 mt-[0.75rem] tracking-widest uppercase">from Flow Lab</div>
+        </div>
+    </div>
+
+    <input type="file" id="file-in" class="hidden" accept="image/*">
+    <input type="file" id="camera-in" class="hidden" accept="image/*" capture="environment">
+
+    <div id="rename-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-[1rem] z-[3000]">
+        <div class="bg-campagne-light dark:bg-campagne-dark w-full max-w-[24rem] rounded-3xl p-[1.5rem] shadow-2xl">
+            <h3 class="text-[1.125rem] font-bold mb-[0.75rem]">Renommer la discussion</h3>
+            <input type="text" id="rename-input" class="w-full px-[1rem] py-[0.75rem] rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent mb-[1rem] outline-none font-medium" placeholder="Nouveau nom...">
+            <div class="flex justify-end gap-[0.5rem]">
+                <button onclick="closeModal('rename-modal')" class="px-[1rem] py-[0.5rem] rounded-xl bg-gray-300 dark:bg-gray-700 font-bold hover:brightness-95 transition">Annuler</button>
+                <button onclick="saveChatName()" class="px-[1rem] py-[0.5rem] rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-bold hover:scale-105 transition">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-[1rem] z-[3000]">
+        <div class="bg-campagne-light dark:bg-campagne-dark w-full max-w-[28rem] rounded-3xl p-[1.5rem] shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-[1.5rem]">
+                <h3 class="text-[1.25rem] font-extrabold">Paramètres</h3>
+                <button onclick="closeSettings()" class="p-[0.5rem] bg-surface-light dark:bg-surface-dark rounded-full hover:scale-105 transition"><i data-lucide="x" class="w-[1.25rem] h-[1.25rem]"></i></button>
+            </div>
+
+            <div class="space-y-[0.75rem]">
+                <button onclick="toggleTheme()" class="w-full flex items-center gap-[1rem] p-[1rem] bg-surface-light dark:bg-surface-dark rounded-2xl font-bold hover:brightness-95 transition">
+                    <i data-lucide="moon" class="w-[1.25rem] h-[1.25rem] text-indigo-500"></i> Changer de thème
+                </button>
+                
+                <button onclick="toggleSettingPanel('panel-sub')" class="w-full flex items-center gap-[1rem] p-[1rem] bg-surface-light dark:bg-surface-dark rounded-2xl font-bold hover:brightness-95 transition">
+                    <i data-lucide="credit-card" class="w-[1.25rem] h-[1.25rem] text-emerald-500"></i> Abonnement & Mode Offline
+                </button>
+                <div id="panel-sub" class="hidden p-[1rem] bg-userBg-light dark:bg-userBg-dark rounded-xl mt-[0.5rem] border border-gray-300 dark:border-gray-700">
+                    <div id="subscription-info" class="text-[0.875rem] font-bold text-center mb-[1rem] text-blue-600 dark:text-blue-400">Vérification...</div>
+                    <div class="text-center mb-[1rem]">
+                        <p class="text-[0.875rem] mb-[0.25rem]">Envoyez <strong>2.5$</strong> ou <strong>5000 FC</strong> via Airtel Money au :</p>
+                        <p class="text-[1.25rem] font-black text-red-600 tracking-widest">0979169846</p>
+                    </div>
+                    <input type="text" id="transaction-id" placeholder="Entrez l'ID de transaction ici..." class="w-full p-[0.75rem] rounded-xl bg-campagne-light dark:bg-campagne-dark border border-gray-300 dark:border-gray-600 mb-[0.75rem] outline-none font-bold text-[0.875rem]">
+                    <button onclick="submitSubscription()" class="w-full p-[0.75rem] bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-bold rounded-xl shadow-md hover:scale-105 transition">Valider</button>
+                </div>
+
+                <button onclick="toggleSettingPanel('panel-pref')" class="w-full flex items-center gap-[1rem] p-[1rem] bg-surface-light dark:bg-surface-dark rounded-2xl font-bold hover:brightness-95 transition">
+                    <i data-lucide="sliders" class="w-[1.25rem] h-[1.25rem] text-orange-500"></i> Préférences personnelles
+                </button>
+                <div id="panel-pref" class="hidden p-[1rem] bg-userBg-light dark:bg-userBg-dark rounded-xl mt-[0.5rem] border border-gray-300 dark:border-gray-700">
+                    <p class="text-[0.75rem] font-bold text-gray-500 mb-[0.75rem]">Enregistrez ici vos informations et vos préférences.</p>
+                    <textarea id="pref-input" placeholder="Par exemple j'aime les messages courts..." class="w-full h-[6rem] p-[0.75rem] rounded-xl bg-campagne-light dark:bg-campagne-dark border border-gray-300 dark:border-gray-600 mb-[0.75rem] outline-none text-[0.875rem] resize-none"></textarea>
+                    <button onclick="savePreferences()" class="w-full p-[0.75rem] bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-bold rounded-xl shadow-md hover:scale-105 transition">Enregistrer</button>
+                </div>
+
+                <button onclick="window.open('https://klgaby440-lang.github.io/ll-aide/', '_blank')" class="w-full flex items-center gap-[1rem] p-[1rem] bg-surface-light dark:bg-surface-dark rounded-2xl font-bold hover:brightness-95 transition">
+                    <i data-lucide="help-circle" class="w-[1.25rem] h-[1.25rem] text-purple-500"></i> Aide
+                </button>
+            </div>
+            <div class="text-center text-[0.65rem] font-bold text-gray-400 mt-[1.5rem] tracking-widest uppercase">from Flow Lab</div>
         </div>
     </div>
 
@@ -638,7 +274,300 @@ body.app-body {
         });
     </script>
 
-    <script src="script.js">
+    <script>
+        const db = new Dexie("LlinkDB");
+        db.version(2).stores({ chats: '++id, title, time, mode', msgs: '++id, chatId, role, text' });
+        
+        const SERVER_URL = "https://llink-usz9.onrender.com";
+        let curChatId = null;
+        window.isOnline = true; let currentMode = 'chat';
+        window.isLoggedIn = false;
+        window.isOfflineValid = false;
+        let chatToRename = null;
+        
+        document.addEventListener('DOMContentLoaded', () => { document.getElementById('pref-input').value = localStorage.getItem('llink_prefs') || ""; });
+        function savePreferences() { localStorage.setItem('llink_prefs', document.getElementById('pref-input').value); alert("Préférences sauvegardées !"); toggleSettingPanel('panel-pref');}
+
+        window.checkSubscription = async () => {
+            if(!window.isLoggedIn) return;
+            try {
+                const res = await fetch(`${SERVER_URL}/api/user/status`, { headers: {"Authorization": `Bearer ${window.authToken}`} });
+                const data = await res.json();
+                
+                // GESTION DU MESSAGE DE BIENVENUE 3 JOURS
+                if(data.isNewUser) alert("Bienvenue sur Llink ! Vous bénéficiez d'une période d'essai de 3 jours à partir d'aujourd'hui. Il vous faudra vous abonner après cela.");
+                
+                window.isOfflineValid = data.isValid;
+                const infoDiv = document.getElementById('subscription-info');
+                
+                if(data.isValid && data.isTrial) infoDiv.innerHTML = `🟢 Période d'essai valide jusqu'au : ${new Date(data.expirationDate).toLocaleDateString()}`;
+                else if(data.isValid && !data.isTrial) infoDiv.innerHTML = `💎 Abonnement Pro valide jusqu'au : ${new Date(data.expirationDate).toLocaleDateString()}`;
+                else { infoDiv.innerHTML = `🔴 Accès Hors-Ligne expiré.`; window.isOfflineValid = false; }
+                
+                updateOfflineUI();
+            } catch(e) { console.error("checkSubscription error", e); }
+        };
+
+        async function submitSubscription() {
+            if(!window.isLoggedIn) { alert("Vous devez être connecté pour vous abonner."); return; }
+            const txId = document.getElementById('transaction-id').value.trim();
+            if(!txId) return;
+            document.getElementById('subscription-info').innerText = "Vérification en cours...";
+            try {
+                const res = await fetch(`${SERVER_URL}/api/verify-payment`, {
+                    method: 'POST', headers: {"Content-Type":"application/json", "Authorization": `Bearer ${window.authToken}`},
+                    body: JSON.stringify({ transactionId: txId })
+                });
+                const data = await res.json();
+                if(data.success) { alert("Paiement validé avec succès !"); await window.checkSubscription(); document.getElementById('transaction-id').value = ''; }
+                else alert("Erreur : ID de transaction invalide.");
+            } catch(e) { alert("Erreur réseau de validation."); }
+        }
+
+        async function syncChatToServer(chat) {
+            if(!window.isLoggedIn) return;
+            try { await fetch(`${SERVER_URL}/api/history/sync`, { method: "POST", headers: {"Content-Type":"application/json", "Authorization": `Bearer ${window.authToken}`}, body: JSON.stringify(chat) }); } catch(e){}
+        }
+
+        window.restoreHistory = async () => {
+            try {
+                const user = window.auth ? window.auth.currentUser : null;
+                if (!user) return;
+                const userToken = await user.getIdToken();
+                const response = await fetch(`${SERVER_URL}/api/history`, { method: 'GET', headers: { 'Authorization': `Bearer ${userToken}`, 'Content-Type': 'application/json' } });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (!data.warning) console.log("Historique distant synchronisé.");
+            } catch (error) { console.error("Erreur historique:", error); }
+        };
+
+        function updateOfflineUI() {
+            const alertBox = document.getElementById('pro-alert');
+            if(!window.isOnline && !window.isOfflineValid) alertBox.classList.remove('hidden');
+            else alertBox.classList.add('hidden');
+        }
+
+        window.toggleOnline = () => {
+            window.isOnline = !window.isOnline;
+            const dot = document.getElementById('network-status');
+            const modelSel = document.getElementById('model-selector');
+            const micBtn = document.getElementById('mic-btn');
+            if(window.isOnline) {
+                dot.className = "w-[0.875rem] h-[0.875rem] rounded-full bg-green-500 shadow-[0_0_8px_#34A853]";
+                modelSel.disabled = false; modelSel.style.opacity = 1;
+                micBtn.disabled = false; micBtn.style.opacity = 1;
+            } else {
+                dot.className = "w-[0.875rem] h-[0.875rem] rounded-full bg-red-500";
+                modelSel.disabled = true; modelSel.style.opacity = 0.5;
+                micBtn.disabled = true; micBtn.style.opacity = 0.5;
+                if(!window.isLoggedIn) alert("Connectez-vous pour utiliser le mode Hors-Ligne.");
+            }
+            updateOfflineUI();
+        };
+
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; if(window.innerWidth<768) toggleSidebar(); }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+        function toggleSettingPanel(id) { const p = document.getElementById(id); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); }
+        function toggleMediaMenu() { const m = document.getElementById('media-menu'); m.style.display = m.style.display==='flex'?'none':'flex'; }
+        function triggerInput(id) { document.getElementById(id).click(); toggleMediaMenu(); }
+        function scrollToBottom() { const w = document.getElementById('chat-window'); w.scrollTop = w.scrollHeight; }
+        window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
+        
+        async function toggleMode() {
+            currentMode = currentMode === 'chat' ? 'translate' : 'chat';
+            const btn = document.getElementById('mode-btn'); const lang = document.getElementById('lang-bar');
+            if(currentMode === 'chat') { btn.innerHTML = '<i data-lucide="message-square" class="w-[1.25rem] h-[1.25rem]"></i>'; lang.classList.add('hidden'); lang.classList.remove('flex'); }
+            else { btn.innerHTML = '<i data-lucide="languages" class="w-[1.25rem] h-[1.25rem] text-blue-500"></i>'; lang.classList.remove('hidden'); lang.classList.add('flex'); }
+            lucide.createIcons(); await newConversation(); window.loadHistory();
+        }
+
+        window.newConversation = () => {
+            curChatId = null;
+            const w = document.getElementById('chat-window');
+            if(currentMode === 'translate') {
+                w.innerHTML = `<div id="empty-state" class="flex flex-col items-center justify-center h-full text-center mt-[2.5rem]"><div class="logo-anim opacity-20 dark:opacity-10 mb-[1.5rem] flex justify-center"><svg class="logo-llink overflow-visible" viewBox="-5 -5 110 110"><circle cx="50" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="50" cy="80" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></div><h1 class="text-[1.875rem] font-extrabold bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">Llink Traduction</h1><p class="text-[0.875rem] font-bold text-gray-500 mt-[0.5rem]">Posez vos questions ou lancez une traduction.</p></div>`;
+            } else {
+                w.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-center mt-10"><div class="logo-anim opacity-20 dark:opacity-10 mb-4"><svg class="logo-llink overflow-visible" width="100" height="140" viewBox="-10 -32 110 129"><circle cx="50" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="76" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="50" cy="80" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="65" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="35" r="18" fill="none" stroke="currentColor" stroke-width="2.5"/></svg></div><h1 class="text-3xl font-extrabold bg-gradient-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">Llink</h1><p class="text-sm font-bold text-gray-500 mt-1 mb-6">Posez vos questions ou lancez une traduction.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl text-left">
+                    <button onclick="sendDirect('M\\'aider à apprendre')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-2xl hover:bg-surface-light dark:hover:bg-surface-dark transition flex flex-col gap-1"><span class="font-black text-blue-400">🎓 M'aider à apprendre</span><span class="text-xs text-gray-500 font-bold">générer des explications méthodiques pour vos cours avec des exercices adaptés.</span></button>
+                    <button onclick="sendDirect('M\\'aider à rédiger')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-2xl hover:bg-surface-light dark:hover:bg-surface-dark transition flex flex-col gap-1"><span class="font-black text-green-500">✍️ M'aider à rédiger</span><span class="text-xs text-gray-500 font-bold">perfectionnez vos lettre, codes sources et autres documents écris.</span></button>
+                    <button onclick="sendDirect('Discuter de quelque chose')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-2xl hover:bg-surface-light dark:hover:bg-surface-dark transition flex flex-col gap-1"><span class="font-black text-purple-500">💬 Discuter de quelque chose</span><span class="text-xs text-gray-500 font-bold">explorer des thématiques des sujets qui vous passionent.</span></button>
+                    <button onclick="sendDirect('Me surprendre')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-2xl hover:bg-surface-light dark:hover:bg-surface-dark transition flex flex-col gap-1"><span class="font-black text-orange-500">✨ Me surprendre</span><span class="text-xs text-gray-500 font-bold">laissez Llink vous suprendre avec quelque chose d'inatendue.</span></button>
+                    <button onclick="sendDirect('Comment utiliser Llink ?')" class="p-4 border border-gray-300 dark:border-gray-700 rounded-2xl hover:bg-surface-light dark:hover:bg-surface-dark transition flex flex-col gap-1 md:col-span-2 text-center items-center"><span class="font-black text-blue-600">🚀 Comment utiliser</span><span class="text-xs text-gray-500 font-bold">comprendre en quoi Llink different des IA actuelles et comment l'utiliser.</span></button>
+                </div></div>`;
+            }
+        };
+
+        window.loadHistory = async () => {
+            if(!window.isLoggedIn) return;
+            const h = await db.chats.where('mode').equals(currentMode).reverse().toArray();
+            document.getElementById('history').innerHTML = h.map(c => 
+                `<div class="flex items-center justify-between p-[0.75rem] rounded-xl hover:bg-gray-300 dark:hover:bg-gray-800 cursor-pointer font-bold text-[0.875rem] transition group">
+                    <div class="flex-grow truncate pr-2" onclick="switchChat(${c.id})">${c.title}</div>
+                    <div class="flex items-center gap-[0.75rem] opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                        <i data-lucide="edit-2" class="w-[1rem] h-[1rem] text-blue-400 hover:text-blue-600" onclick="openRenameModal(${c.id}, \`${c.title.replace(/`/g, "")}\`, event)"></i>
+                        <i data-lucide="trash-2" class="w-[1rem] h-[1rem] text-red-400 hover:text-red-600" onclick="deleteChat(${c.id}, event)"></i>
+                    </div>
+                </div>`
+            ).join('');
+            lucide.createIcons();
+        };
+
+        window.openRenameModal = (id, currentTitle, event) => {
+            if(event) event.stopPropagation();
+            chatToRename = id;
+            document.getElementById('rename-input').value = currentTitle;
+            document.getElementById('rename-modal').style.display = 'flex';
+        };
+
+        window.saveChatName = async () => {
+            const newTitle = document.getElementById('rename-input').value.trim();
+            if (newTitle && chatToRename) {
+                await db.chats.update(chatToRename, { title: newTitle });
+                window.loadHistory();
+                closeModal('rename-modal');
+                const fullChat = await db.chats.get(chatToRename);
+                fullChat.messages = await db.msgs.where('chatId').equals(chatToRename).toArray();
+                await syncChatToServer(fullChat);
+            }
+        };
+
+        window.switchChat = async (id) => {
+            curChatId = id;
+            const m = await db.msgs.where('chatId').equals(id).toArray();
+            document.getElementById('chat-window').innerHTML = "";
+            m.forEach(msg => renderMessage(msg.text, msg.role));
+            if(window.innerWidth<768) toggleSidebar();
+        };
+
+        window.deleteChat = async (id, event) => { 
+            if(event) event.stopPropagation();
+            if(confirm("Supprimer la discussion ?")) { 
+                await db.chats.delete(id);
+                await db.msgs.where('chatId').equals(id).delete();
+                if(curChatId===id) newConversation(); 
+                window.loadHistory(); 
+            } 
+        };
+
+        function parseMarkdown(text) {
+            if(!text) return "";
+            let html = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            html = html.replace(/```([\s\S]*?)```/g, function(m, p1){ return `<div class="relative"><button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); this.innerText='Copié!'; setTimeout(()=>this.innerText='Copier',2000);" class="absolute top-[0.5rem] right-[0.5rem] bg-gray-700 text-white text-[0.625rem] font-bold py-[0.25rem] px-[0.5rem] rounded">Copier</button><pre><code>${p1}</code></pre></div>`; });
+            html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>'); html = html.replace(/\n/g, '<br>'); return html;
+        }
+
+        // ================= INJECTION DES BOUTONS COPIER / PARTAGER =================
+        function renderMessage(txt, role, id="") {
+            const w = document.getElementById('chat-window');
+            const html = parseMarkdown(txt);
+            
+            // On encode le texte pour éviter que des guillemets cassent le code HTML du bouton
+            const safeTxt = encodeURIComponent(txt);
+            
+            const actionBtns = `
+                <div class="msg-actions flex gap-[0.75rem] mt-[0.5rem] px-[0.5rem] text-gray-500">
+                    <button onclick="navigator.clipboard.writeText(decodeURIComponent('${safeTxt}')); this.innerHTML='<i data-lucide=\\'check\\' class=\\'w-[1rem] h-[1rem] text-green-500\\'></i>'; setTimeout(() => { this.innerHTML='<i data-lucide=\\'copy\\' class=\\'w-[1rem] h-[1rem]\\'></i>'; lucide.createIcons(); }, 2000);" title="Copier" class="hover:text-blue-500 transition flex items-center justify-center p-[0.25rem]"><i data-lucide="copy" class="w-[1rem] h-[1rem]"></i></button>
+                    <button onclick="if(navigator.share) { navigator.share({title: 'Llink', text: decodeURIComponent('${safeTxt}')}) } else { alert('Partage non supporté.'); }" title="Partager" class="hover:text-green-500 transition flex items-center justify-center p-[0.25rem]"><i data-lucide="share-2" class="w-[1rem] h-[1rem]"></i></button>
+                </div>
+            `;
+
+            if(role === 'user') {
+                w.insertAdjacentHTML('beforeend', `<div class="flex flex-col items-end w-full msg-wrapper" id="${id}"><div class="bg-userBg-light dark:bg-userBg-dark p-[1rem] rounded-3xl rounded-br-sm max-w-[85%] font-medium msg-content text-[1rem] shadow-sm">${html}</div>${actionBtns}</div>`);
+            } else {
+                w.insertAdjacentHTML('beforeend', `<div class="flex flex-col items-start w-full msg-wrapper" id="${id}"><div class="flex items-center gap-[0.5rem] mb-[0.25rem]"><div class="w-[2rem] h-[2rem] rounded-full logo-anim flex items-center justify-center flex-shrink-0 bg-gray-200 dark:bg-gray-800"><svg viewBox="-5 -5 110 110" class="logo-llink overflow-visible w-full h-full"><circle cx="50" cy="20" r="18" fill="none" stroke="#FF5733" stroke-width="8"/><circle cx="76" cy="35" r="18" fill="none" stroke="#33FF57" stroke-width="8"/><circle cx="76" cy="65" r="18" fill="none" stroke="#3357FF" stroke-width="8"/><circle cx="50" cy="80" r="18" fill="none" stroke="#F333FF" stroke-width="8"/><circle cx="24" cy="65" r="18" fill="none" stroke="#FFBD33" stroke-width="8"/><circle cx="24" cy="35" r="18" fill="none" stroke="#33FFF3" stroke-width="8"/></svg></div><span class="text-[0.75rem] font-black uppercase tracking-wider">LLINK</span></div><div class="px-[0.5rem] w-full font-medium msg-content text-[1rem]">${html}</div>${actionBtns}</div>`);
+            }
+            lucide.createIcons(); scrollToBottom();
+        }
+
+        window.sendDirect = (txt) => { document.getElementById('user-msg').value = txt; sendFromInput(); };
+        
+        window.sendFromInput = async () => {
+            const input = document.getElementById('user-msg');
+            const txt = input.value;
+            if(!txt.trim()) return; input.value = ''; input.style.height = '3rem';
+            if(!curChatId) { curChatId = await db.chats.add({title: txt.substring(0,20), time: Date.now(), mode: currentMode}); window.loadHistory(); }
+            
+            const emptyState = document.getElementById('empty-state');
+            if(emptyState) emptyState.remove();
+            
+            if(window.isLoggedIn) await db.msgs.add({chatId: curChatId, role: 'user', text: txt});
+            renderMessage(txt, 'user');
+            
+            const loadId = "load-"+Date.now(); renderMessage("Réflexion...", 'bot', loadId);
+            const contentDiv = document.getElementById(loadId).querySelector('.msg-content');
+            let fullReply = "";
+
+            if(window.isOnline) {
+                try {
+                    const prefs = localStorage.getItem('llink_prefs') || "";
+                    const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs };
+                    const res = await fetch(`${SERVER_URL}/api/chat`, { method: 'POST', body: JSON.stringify(payload), headers: {"Content-Type":"application/json", "Authorization": window.authToken?`Bearer ${window.authToken}`:""} });
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder(); contentDiv.innerHTML = "";
+                    while(true) { const {value, done} = await reader.read(); if(done) break;
+                    fullReply += decoder.decode(value, {stream:true}); contentDiv.innerHTML = parseMarkdown(fullReply); scrollToBottom(); }
+                } catch(e) { fullReply = "❌ Erreur de connexion au serveur Render."; contentDiv.innerHTML = fullReply; }
+            } else {
+                if(!window.isOfflineValid) { fullReply = "❌ Votre accès au mode Hors-Ligne est expiré. Veuillez vous connecter à Internet et vous abonner."; }
+                else if(window.generateOfflineText) { fullReply = await window.generateOfflineText(txt, loadId); }
+                else { fullReply = "⚠️ Modèle WASM non prêt."; }
+                contentDiv.innerHTML = parseMarkdown(fullReply);
+            }
+
+            if(window.isLoggedIn) {
+                await db.msgs.add({chatId: curChatId, role: 'bot', text: fullReply});
+                const fullChat = await db.chats.get(curChatId); fullChat.messages = await db.msgs.where('chatId').equals(curChatId).toArray();
+                await syncChatToServer(fullChat);
+            }
+        };
+
+        // ================= MEDIA LOGIC =================
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+        window.handleImageUpload = async (e) => {
+            const f = e.target.files[0];
+            if(!f) return; toggleMediaMenu();
+            if(!window.isOnline) {
+                renderMessage("OCR Local...", 'bot', 'ocr-load');
+                const {data:{text}} = await Tesseract.recognize(f, 'fra+eng');
+                document.getElementById('ocr-load').remove(); sendDirect("Analyse cette image: " + text); return;
+            }
+            const reader = new FileReader(); reader.readAsDataURL(f);
+            reader.onload = async () => {
+                renderMessage("Analyse d'image Cloud...", 'bot', 'ocr-load');
+                try {
+                    const res = await fetch(`${SERVER_URL}/api/ocr`, { method: 'POST', body: JSON.stringify({imageBase64: reader.result}), headers: {"Content-Type":"application/json"} });
+                    const data = await res.json(); document.getElementById('ocr-load').remove(); sendDirect("Analyse: " + data.response);
+                } catch(e) { document.getElementById('ocr-load').remove(); alert("Erreur OCR"); }
+            }; e.target.value = '';
+        };
+
+        window.handleVoice = async () => {
+            if(!window.isOnline) { alert("Le micro est désactivé hors-ligne."); return; }
+            if(!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                    mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = async () => {
+                        const blob = new Blob(audioChunks, {type:'audio/wav'});
+                        const form = new FormData(); form.append("file", blob);
+                        try { const res = await fetch(`${SERVER_URL}/api/audio`, {method:'POST', body:form});
+                        const data = await res.json(); if(data.text) sendDirect(data.text); } catch(e){ alert("Erreur serveur audio."); }
+                    };
+                    mediaRecorder.start(); isRecording = true; document.getElementById('mic-btn').classList.add('text-red-500', 'animate-pulse');
+                } catch(e) { alert("Refus d'accès micro."); }
+            } else { mediaRecorder.stop(); isRecording = false; document.getElementById('mic-btn').classList.remove('text-red-500', 'animate-pulse'); }
+        };
+
+        document.getElementById('file-in').addEventListener('change', handleImageUpload);
+        document.getElementById('camera-in').addEventListener('change', handleImageUpload);
+
+        lucide.createIcons(); newConversation();
     </script>
 </body>
 </html>
