@@ -155,8 +155,10 @@ async def verify_payment(req: VerifyPaymentRequest, user: dict = Depends(verify_
     return {"success": False}
 
 # ==========================================
-# 6. ROUTE PRINCIPALE IA
+# 6. ROUTE PRINCIPALE IA (AVEC VRAI STREAMING)
 # ==========================================
+from fastapi.responses import StreamingResponse
+
 @app.post("/api/chat")
 async def chat_endpoint(payload: ChatPayload):
     user_text = payload.message
@@ -164,6 +166,7 @@ async def chat_endpoint(payload: ChatPayload):
     user_prefs = payload.preferences
     mode = payload.mode
 
+    # Choix du modèle Hugging Face
     if "deepseek" in selected_model.lower():
         hf_model = "deepseek-ai/DeepSeek-V3"
     elif "llama" in selected_model.lower():
@@ -171,6 +174,7 @@ async def chat_endpoint(payload: ChatPayload):
     else:
         hf_model = "mistralai/Mistral-7B-Instruct-v0.3"
         
+    # Configuration des instructions système
     if mode == "translate":
         system_instruction = "Tu es un traducteur expert. Tu ne dois donner QUE la traduction exacte, sans aucune explication, ni commentaire, ni introduction. Traduis mot pour mot."
     else:
@@ -179,6 +183,7 @@ async def chat_endpoint(payload: ChatPayload):
     if user_prefs and mode != "translate":
         system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
 
+    # Préparation du payload avec activation du paramètre stream
     hf_payload = {
         "model": hf_model,
         "messages": [
@@ -186,7 +191,8 @@ async def chat_endpoint(payload: ChatPayload):
             {"role": "user", "content": user_text}
         ],
         "temperature": 0.7,
-        "max_tokens": 2048
+        "max_tokens": 2048,
+        "stream": True  # ACTIVATION DU STREAMING SUR L'API HUGGING FACE
     }
 
     headers = {
@@ -194,55 +200,69 @@ async def chat_endpoint(payload: ChatPayload):
         "Content-Type": "application/json"
     }
 
-    try:
-        if not HF_TOKEN:
-            raise ValueError("Token HF manquant.")
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://router.huggingface.co/v1/chat/completions",
-                json=hf_payload,
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                if "choices" in result:
-                    ai_reply = result["choices"][0]["message"]["content"]
-                    return {"reply": ai_reply, "provider": "huggingface", "model_used": hf_model}
-                elif "error" in result and "loading" in result["error"]:
-                    raise ValueError(f"Modèle en cours de chargement. Temps estimé: {result.get('estimated_time', 'inconnu')}s")
-                else:
-                    raise ValueError(f"Structure JSON inconnue : {result}")
-            else:
-                raise ValueError(f"Erreur HTTP {response.status_code}: {response.text}")
-
-    except Exception as e:
-        print(f"🚨 [FALLBACK ACTIVÉ] HF a échoué: {str(e)}. Basculement sur Gemini...")
+    async def stream_generator():
+        hf_failed = False
         try:
-            if not GEMINI_KEY:
-                raise ValueError("Clé Gemini manquante pour le fallback.")
-                
-            gemini_model_name = 'models/gemini-2.5-flash'
-            model = genai.GenerativeModel(
-                model_name=gemini_model_name,
-                system_instruction=system_instruction
-            )
-            
-            gemini_response = model.generate_content(user_text)
-            
-            if not gemini_response.text:
-                raise ValueError("Gemini a renvoyé une réponse vide.")
+            if not HF_TOKEN:
+                raise ValueError("Token HF manquant.")
 
-            return {
-                "reply": gemini_response.text,
-                "provider": "gemini",
-                "model_used": gemini_model_name,
-                "notice": "Hugging Face était surchargé, basculement transparent effectué."
-            }
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # Utilisation de client.stream pour ouvrir une connexion persistante
+                async with client.stream(
+                    "POST", 
+                    "https://router.huggingface.co/v1/chat/completions", 
+                    json=hf_payload, 
+                    headers=headers
+                ) as response:
+                    
+                    if response.status_code != 200:
+                        raise ValueError(f"Erreur HTTP {response.status_code}")
+
+                    # Lecture du flux ligne par ligne
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                data_json = json.loads(data_str)
+                                # Extraction du fragment de texte généré
+                                chunk = data_json["choices"][0]["delta"].get("content", "")
+                                if chunk:
+                                    yield chunk  # Envoi immédiat du texte au frontend
+                            except Exception:
+                                pass
+                                
+        except Exception as e:
+            print(f"🚨 [FALLBACK ACTIVÉ] HF a échoué: {str(e)}. Basculement sur Gemini en streaming...")
+            hf_failed = True
+
+        # Si Hugging Face a échoué, le code continue ici pour exécuter le Fallback sur Gemini
+        if hf_failed:
+            try:
+                if not GEMINI_KEY:
+                    yield "❌ Erreur : Tous les serveurs IA sont inaccessibles (Clé Gemini manquante)."
+                    return
+                    
+                gemini_model_name = 'models/gemini-2.5-flash'
+                model = genai.GenerativeModel(
+                    model_name=gemini_model_name,
+                    system_instruction=system_instruction
+                )
+                
+                # Activation du streaming également sur l'API native de Gemini
+                gemini_response = model.generate_content(user_text, stream=True)
+                
+                for chunk in gemini_response:
+                    if chunk.text:
+                        yield chunk.text  # Envoi immédiat du texte généré par Gemini
+                        
+            except Exception as gemini_error:
+                yield f"❌ Tous les serveurs IA sont indisponibles. Détails: {str(gemini_error)}"
+
+    # Renvoi de la réponse sous forme de flux continu compatible avec l'application
+    return StreamingResponse(stream_generator(), media_type="text/plain")
             
-        except Exception as gemini_error:
-            raise HTTPException(status_code=500, detail="Tous les serveurs IA sont inaccessibles.")
 
 # ==========================================
 # 7. VISION ET AUDIO
