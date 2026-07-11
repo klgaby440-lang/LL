@@ -3,8 +3,10 @@ import json
 import base64
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header, APIRouter
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import httpx
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -14,7 +16,6 @@ import google.generativeai as genai
 # 1. INITIALISATION DE L'APPLICATION
 # ==========================================
 app = FastAPI(title="Llink API Server - FLOW LAB")
-router = APIRouter()
 
 origins = [
     "https://ll-one-self.vercel.app",
@@ -68,11 +69,6 @@ else:
 # ==========================================
 # 4. MODÈLES DE DONNÉES Pydantic
 # ==========================================
-class ChatPayload(BaseModel):
-    message: str
-    mode: str
-    model: str
-    preferences: str = ""
 
 class VerifyPaymentRequest(BaseModel):
     transactionId: str
@@ -155,35 +151,71 @@ async def verify_payment(req: VerifyPaymentRequest, user: dict = Depends(verify_
     return {"success": False}
 
 # ==========================================
-# 6. ROUTE PRINCIPALE IA (AVEC VRAI STREAMING)
+# 4. MODÈLES DE DONNÉES & SÉCURITÉ
 # ==========================================
-from fastapi.responses import StreamingResponse
+class ChatPayload(BaseModel):
+    message: str
+    model: str
+    preferences: Optional[str] = None
+    mode: Optional[str] = "chat"
 
-@app.post("/api/chat")
-async def chat_endpoint(payload: ChatPayload):
+# ==========================================
+# 5. ROUTE PRINCIPALE IA AVEC STREAMING FLUIDE
+# ==========================================
+@router.post("/chat")
+async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)):
     user_text = payload.message
     selected_model = payload.model
     user_prefs = payload.preferences
     mode = payload.mode
 
-    # Choix du modèle Hugging Face
+    # Configuration des instructions système
+    if mode == "translate":
+        system_instruction = "Tu es un traducteur expert. Tu ne dois donner QUE la traduction exacte, sans aucune explication, ni commentaire, ni introduction. Traduis mot pour mot."
+    else:
+        system_instruction = "Tu es Llink, une IA d'assistance et de traduction créée par FLOW LAB. Tu es précis, structuré et amical."
+    
+    if user_prefs and mode != "translate":
+        system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
+
+    # EN-TÊTES DE STREAMING POUR DÉSACTIVER LE CACHE DES SERVEURS DE DÉPLOIEMENT
+    stream_headers = {
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
+    }
+
+    # ---------------------------------------------------
+    # BRANCHE 1 : GEMINI SÉLECTIONNÉ DIRECTEMENT
+    # ---------------------------------------------------
+    if "gemini" in selected_model.lower():
+        async def gemini_generator():
+            try:
+                if not GEMINI_KEY:
+                    yield "❌ Erreur : Clé API Gemini manquante sur le serveur."
+                    return
+                
+                model = genai.GenerativeModel(model_name='gemini-2.5-flash', system_instruction=system_instruction)
+                response = model.generate_content(user_text, stream=True)
+                
+                for chunk in response:
+                    if chunk.text:
+                        yield chunk.text
+            except Exception as e:
+                yield f"❌ Erreur Gemini en cours de flux : {str(e)}"
+                
+        return StreamingResponse(gemini_generator(), media_type="text/plain", headers=stream_headers)
+
+    # ---------------------------------------------------
+    # BRANCHE 2 : HUGGING FACE (AVEC FALLBACK GEMINI)
+    # ---------------------------------------------------
     if "deepseek" in selected_model.lower():
         hf_model = "deepseek-ai/DeepSeek-V3"
     elif "llama" in selected_model.lower():
         hf_model = "meta-llama/Meta-Llama-3-8B-Instruct"
     else:
         hf_model = "mistralai/Mistral-7B-Instruct-v0.3"
-        
-    # Configuration des instructions système
-    if mode == "translate":
-        system_instruction = "Tu es un traducteur expert. Tu ne dois donner QUE la traduction exacte, sans aucune explication, ni commentaire, ni introduction. Traduis mot pour mot."
-    else:
-        system_instruction = "Tu es Llink, une IA d'assistance et de traduction créée par FLOW LAB. Tu es précis et amical."
-    
-    if user_prefs and mode != "translate":
-        system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
 
-    # Préparation du payload avec activation du paramètre stream
     hf_payload = {
         "model": hf_model,
         "messages": [
@@ -192,33 +224,31 @@ async def chat_endpoint(payload: ChatPayload):
         ],
         "temperature": 0.7,
         "max_tokens": 2048,
-        "stream": True  # ACTIVATION DU STREAMING SUR L'API HUGGING FACE
+        "stream": True # Streaming activé côté HF
     }
 
-    headers = {
+    req_headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
         "Content-Type": "application/json"
     }
 
-    async def stream_generator():
+    async def hf_stream_generator():
         hf_failed = False
         try:
             if not HF_TOKEN:
                 raise ValueError("Token HF manquant.")
 
             async with httpx.AsyncClient(timeout=60.0) as client:
-                # Utilisation de client.stream pour ouvrir une connexion persistante
                 async with client.stream(
                     "POST", 
                     "https://router.huggingface.co/v1/chat/completions", 
                     json=hf_payload, 
-                    headers=headers
+                    headers=req_headers
                 ) as response:
                     
                     if response.status_code != 200:
                         raise ValueError(f"Erreur HTTP {response.status_code}")
 
-                    # Lecture du flux ligne par ligne
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
                             data_str = line[6:].strip()
@@ -226,46 +256,44 @@ async def chat_endpoint(payload: ChatPayload):
                                 break
                             try:
                                 data_json = json.loads(data_str)
-                                # Extraction du fragment de texte généré
                                 chunk = data_json["choices"][0]["delta"].get("content", "")
                                 if chunk:
-                                    yield chunk  # Envoi immédiat du texte au frontend
+                                    yield chunk
                             except Exception:
                                 pass
                                 
         except Exception as e:
-            print(f"🚨 [FALLBACK ACTIVÉ] HF a échoué: {str(e)}. Basculement sur Gemini en streaming...")
+            print(f"🚨 HF en panne ({str(e)}). Basculement streaming sur Gemini...")
             hf_failed = True
 
-        # Si Hugging Face a échoué, le code continue ici pour exécuter le Fallback sur Gemini
+        # FALLBACK : En cas d'échec de Hugging Face, Gemini prend immédiatement le relais en stream
         if hf_failed:
             try:
                 if not GEMINI_KEY:
-                    yield "❌ Erreur : Tous les serveurs IA sont inaccessibles (Clé Gemini manquante)."
+                    yield "❌ Tous les serveurs sont indisponibles (Token HF et Clé Gemini manquants)."
                     return
-                    
-                gemini_model_name = 'models/gemini-2.5-flash'
-                model = genai.GenerativeModel(
-                    model_name=gemini_model_name,
-                    system_instruction=system_instruction
-                )
                 
-                # Activation du streaming également sur l'API native de Gemini
-                gemini_response = model.generate_content(user_text, stream=True)
+                model = genai.GenerativeModel(model_name='gemini-2.5-flash', system_instruction=system_instruction)
+                backup_res = model.generate_content(user_text, stream=True)
                 
-                for chunk in gemini_response:
+                for chunk in backup_res:
                     if chunk.text:
-                        yield chunk.text  # Envoi immédiat du texte généré par Gemini
+                        yield chunk.text
                         
-            except Exception as gemini_error:
-                yield f"❌ Tous les serveurs IA sont indisponibles. Détails: {str(gemini_error)}"
+            except Exception as backup_err:
+                yield f"❌ Échec total de la génération. Détails : {str(backup_err)}"
 
-    # Renvoi de la réponse sous forme de flux continu compatible avec l'application
-    return StreamingResponse(stream_generator(), media_type="text/plain")
-            
+    return StreamingResponse(hf_stream_generator(), media_type="text/plain", headers=stream_headers)
 
 # ==========================================
-# 7. VISION ET AUDIO
+# 7. ENREGISTREMENT ET LANCEMENT
+# ==========================================
+@app.get("/")
+def root():
+    return {"message": "Llink Backend API est opérationnel et sécurisé."}
+    
+# ==========================================
+# 8. VISION ET AUDIO
 # ==========================================
 @app.post("/api/ocr")
 async def ocr_endpoint(req: OCRRequest):
@@ -293,7 +321,7 @@ async def audio_endpoint(file: UploadFile = File(...)):
         return {"text": f"Erreur Audio : {str(e)}"}
 
 # ==========================================
-# 8. SYNCHRONISATION FIREBASE
+# 9. SYNCHRONISATION FIREBASE
 # ==========================================
 @app.post("/api/history/sync")
 async def sync_history(chat: dict, user: dict = Depends(verify_token)):
