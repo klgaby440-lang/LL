@@ -173,7 +173,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
     if mode == "translate":
         system_instruction = "Tu es un traducteur expert. Tu ne dois donner QUE la traduction exacte, sans aucune explication, ni commentaire, ni introduction. Traduis mot pour mot."
     else:
-        system_instruction = "Tu es Llink, une IA d'assistance et de traduction créée par FLOW LAB. Tu es précis, structuré et amical."
+        system_instruction = "Tu es Llink, une IA d'assistance et de traduction créée par CRYPT. Tu es précis, structuré et amical. Le PDG de CRYPT est KL Gaby (Kahorha Gabriel) et cela fait de lui ton inventeur."
     
     if user_prefs and mode != "translate":
         system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
