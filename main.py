@@ -2,7 +2,7 @@ import os
 import json
 import base64
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header, APIRouter
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -162,7 +162,7 @@ class ChatPayload(BaseModel):
 # ==========================================
 # 5. ROUTE PRINCIPALE IA AVEC STREAMING FLUIDE
 # ==========================================
-@router.post("/chat")
+@app.post("/api/chat")
 async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)):
     user_text = payload.message
     selected_model = payload.model
