@@ -288,6 +288,38 @@
         document.addEventListener('DOMContentLoaded', () => { document.getElementById('pref-input').value = localStorage.getItem('llink_prefs') || ""; });
         function savePreferences() { localStorage.setItem('llink_prefs', document.getElementById('pref-input').value); alert("Préférences sauvegardées !"); toggleSettingPanel('panel-pref');}
 
+        window.exportDatasetJSON = async () => {
+            try {
+                // Récupération de tous les messages de la base de données
+                const allMsgs = await db.msgs.toArray();
+                
+                // Formatage en structure JSON standard (idéal pour le fine-tuning LLM)
+                const dataset = allMsgs.map(m => ({
+                    role: m.role,
+                    content: m.text
+                }));
+                
+                // Création du fichier téléchargeable
+                const blob = new Blob([JSON.stringify(dataset, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                
+                // Création d'un lien invisible pour forcer le téléchargement
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Llink_Dataset_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Nettoyage de la mémoire
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log("✅ Dataset exporté avec succès !");
+            } catch (error) {
+                console.error("Erreur lors de l'exportation du dataset :", error);
+            }
+        };
+                
         window.checkSubscription = async () => {
             if(!window.isLoggedIn) return;
             try {
@@ -493,7 +525,19 @@
             const emptyState = document.getElementById('empty-state');
             if(emptyState) emptyState.remove();
             
-            if(window.isLoggedIn) await db.msgs.add({chatId: curChatId, role: 'user', text: txt});
+            if(window.isLoggedIn) {
+            await db.msgs.add({chatId: curChatId, role: 'user', text: txt});
+            
+            // Vérification du nombre de requêtes utilisateur
+            const userPromptsCount = await db.msgs.where('role').equals('user').count();
+            
+            // Si le compte est un multiple de 50 (50, 100, 150...), on lance l'export
+            if (userPromptsCount > 0 && userPromptsCount % 50 === 0) {
+                window.exportDatasetJSON();
+                // Une petite notification discrète ne fait pas de mal
+                setTimeout(() => alert(`🎉 Cap des ${userPromptsCount} prompts atteint ! Ton dataset JSON a été exporté automatiquement.`), 1000);
+            }
+        }
             renderMessage(txt, 'user');
             
             const loadId = "load-"+Date.now(); renderMessage("Réflexion...", 'bot', loadId);
@@ -506,9 +550,24 @@
                     const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs };
                     const res = await fetch(`${SERVER_URL}/api/chat`, { method: 'POST', body: JSON.stringify(payload), headers: {"Content-Type":"application/json", "Authorization": window.authToken?`Bearer ${window.authToken}`:""} });
                     const reader = res.body.getReader();
-                    const decoder = new TextDecoder(); contentDiv.innerHTML = "";
-                    while(true) { const {value, done} = await reader.read(); if(done) break;
-                    fullReply += decoder.decode(value, {stream:true}); contentDiv.innerHTML = parseMarkdown(fullReply); scrollToBottom(); }
+                    const decoder = new TextDecoder('utf-8'); 
+                    contentDiv.innerHTML = "";
+                    while(true) { 
+                        const {value, done} = await reader.read(); 
+                        if(done) break;
+                        
+                        // Le {stream: true} évite de casser les caractères multioctets
+                        fullReply += decoder.decode(value, {stream:true}); 
+                        
+                        // Pour le streaming, on affiche le texte brut avec un échappement basique pour éviter les sauts du DOM.
+                        // Le parseMarkdown complet sera appliqué uniquement à la fin de la génération pour stabiliser l'UI.
+                        let tempHtml = fullReply.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
+                        contentDiv.innerHTML = tempHtml + '<span class="animate-pulse inline-block w-2 h-4 bg-gray-500 ml-1"></span>'; 
+                        scrollToBottom(); 
+                    }
+                    // Application du Markdown définitif une fois le stream terminé
+                    contentDiv.innerHTML = parseMarkdown(fullReply);
+                    scrollToBottom(); }
                 } catch(e) { fullReply = "❌ Erreur de connexion au serveur Render."; contentDiv.innerHTML = fullReply; }
             } else {
                 if(!window.isOfflineValid) { fullReply = "❌ Votre accès au mode Hors-Ligne est expiré. Veuillez vous connecter à Internet et vous abonner."; }
