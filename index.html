@@ -517,72 +517,71 @@
         window.sendDirect = (txt) => { document.getElementById('user-msg').value = txt; sendFromInput(); };
         
         window.sendFromInput = async () => {
-            const input = document.getElementById('user-msg');
-            const txt = input.value;
-            if(!txt.trim()) return; input.value = ''; input.style.height = '3rem';
-            if(!curChatId) { curChatId = await db.chats.add({title: txt.substring(0,20), time: Date.now(), mode: currentMode}); window.loadHistory(); }
-            
-            const emptyState = document.getElementById('empty-state');
-            if(emptyState) emptyState.remove();
-            
-            if(window.isLoggedIn) {
-            await db.msgs.add({chatId: curChatId, role: 'user', text: txt});
-            
-            // Vérification du nombre de requêtes utilisateur
-            const userPromptsCount = await db.msgs.where('role').equals('user').count();
-            
-            // Si le compte est un multiple de 50 (50, 100, 150...), on lance l'export
-            if (userPromptsCount > 0 && userPromptsCount % 50 === 0) {
-                window.exportDatasetJSON();
-                // Une petite notification discrète ne fait pas de mal
-                setTimeout(() => alert(`🎉 Cap des ${userPromptsCount} prompts atteint ! Ton dataset JSON a été exporté automatiquement.`), 1000);
-            }
-        }
-            renderMessage(txt, 'user');
-            
-            const loadId = "load-"+Date.now(); renderMessage("Réflexion...", 'bot', loadId);
-            const contentDiv = document.getElementById(loadId).querySelector('.msg-content');
-            let fullReply = "";
-
-            if(window.isOnline) {
-                try {
-                    const prefs = localStorage.getItem('llink_prefs') || "";
-                    const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs };
-                    const res = await fetch(`${SERVER_URL}/api/chat`, { method: 'POST', body: JSON.stringify(payload), headers: {"Content-Type":"application/json", "Authorization": window.authToken?`Bearer ${window.authToken}`:""} });
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder('utf-8'); 
-                    contentDiv.innerHTML = "";
-                    while(true) { 
-                        const {value, done} = await reader.read(); 
-                        if(done) break;
+                    const input = document.getElementById('user-msg');
+                    const txt = input.value;
+                    if(!txt.trim()) return; input.value = ''; input.style.height = '3rem';
+                    if(!curChatId) { curChatId = await db.chats.add({title: txt.substring(0,20), time: Date.now(), mode: currentMode}); window.loadHistory(); }
+                    
+                    const emptyState = document.getElementById('empty-state');
+                    if(emptyState) emptyState.remove();
+                    
+                    if(window.isLoggedIn) {
+                        await db.msgs.add({chatId: curChatId, role: 'user', text: txt});
                         
-                        // Le {stream: true} évite de casser les caractères multioctets
-                        fullReply += decoder.decode(value, {stream:true}); 
+                        // Vérification du nombre de requêtes utilisateur
+                        const userPromptsCount = await db.msgs.where('role').equals('user').count();
                         
-                        // Pour le streaming, on affiche le texte brut avec un échappement basique pour éviter les sauts du DOM.
-                        // Le parseMarkdown complet sera appliqué uniquement à la fin de la génération pour stabiliser l'UI.
-                        let tempHtml = fullReply.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
-                        contentDiv.innerHTML = tempHtml + '<span class="animate-pulse inline-block w-2 h-4 bg-gray-500 ml-1"></span>'; 
-                        scrollToBottom(); 
+                        // Si le compte est un multiple de 50 (50, 100, 150...), on lance l'export
+                        if (userPromptsCount > 0 && userPromptsCount % 50 === 0) {
+                            window.exportDatasetJSON();
+                            // Une petite notification discrète ne fait pas de mal
+                            setTimeout(() => alert(`🎉 Cap des ${userPromptsCount} prompts atteint ! Ton dataset JSON a été exporté automatiquement.`), 1000);
+                        }
                     }
-                    // Application du Markdown définitif une fois le stream terminé
-                    contentDiv.innerHTML = parseMarkdown(fullReply);
-                    scrollToBottom(); }
-                } catch(e) { fullReply = "❌ Erreur de connexion au serveur Render."; contentDiv.innerHTML = fullReply; }
-            } else {
-                if(!window.isOfflineValid) { fullReply = "❌ Votre accès au mode Hors-Ligne est expiré. Veuillez vous connecter à Internet et vous abonner."; }
-                else if(window.generateOfflineText) { fullReply = await window.generateOfflineText(txt, loadId); }
-                else { fullReply = "⚠️ Modèle WASM non prêt."; }
-                contentDiv.innerHTML = parseMarkdown(fullReply);
-            }
-
-            if(window.isLoggedIn) {
-                await db.msgs.add({chatId: curChatId, role: 'bot', text: fullReply});
-                const fullChat = await db.chats.get(curChatId); fullChat.messages = await db.msgs.where('chatId').equals(curChatId).toArray();
-                await syncChatToServer(fullChat);
-            }
-        };
-
+                    renderMessage(txt, 'user');
+                    
+                    const loadId = "load-"+Date.now(); renderMessage("Réflexion...", 'bot', loadId);
+                    const contentDiv = document.getElementById(loadId).querySelector('.msg-content');
+                    let fullReply = "";
+                
+                    if(window.isOnline) {
+                        try {
+                            const prefs = localStorage.getItem('llink_prefs') || "";
+                            const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs };
+                            const res = await fetch(`${SERVER_URL}/api/chat`, { method: 'POST', body: JSON.stringify(payload), headers: {"Content-Type":"application/json", "Authorization": window.authToken?`Bearer ${window.authToken}`:""} });
+                            const reader = res.body.getReader();
+                            const decoder = new TextDecoder('utf-8'); 
+                            contentDiv.innerHTML = "";
+                            while(true) { 
+                                const {value, done} = await reader.read(); 
+                                if(done) break;
+                                
+                                // Le {stream: true} évite de casser les caractères multioctets
+                                fullReply += decoder.decode(value, {stream:true}); 
+                                
+                                // Pour le streaming, on affiche le texte brut avec un échappement basique pour éviter les sauts du DOM.
+                                // Le parseMarkdown complet sera appliqué uniquement à la fin de la génération pour stabiliser l'UI.
+                                let tempHtml = fullReply.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
+                                contentDiv.innerHTML = tempHtml + '<span class="animate-pulse inline-block w-2 h-4 bg-gray-500 ml-1"></span>'; 
+                                scrollToBottom(); 
+                            }
+                            // Application du Markdown définitif une fois le stream terminé
+                            contentDiv.innerHTML = parseMarkdown(fullReply);
+                            scrollToBottom();
+                        } catch(e) { fullReply = "❌ Erreur de connexion au serveur Render."; contentDiv.innerHTML = fullReply; }
+                    } else {
+                        if(!window.isOfflineValid) { fullReply = "❌ Votre accès au mode Hors-Ligne est expiré. Veuillez vous connecter à Internet et vous abonner."; }
+                        else if(window.generateOfflineText) { fullReply = await window.generateOfflineText(txt, loadId); }
+                        else { fullReply = "⚠️ Modèle WASM non prêt."; }
+                        contentDiv.innerHTML = parseMarkdown(fullReply);
+                    }
+                
+                    if(window.isLoggedIn) {
+                        await db.msgs.add({chatId: curChatId, role: 'bot', text: fullReply});
+                        const fullChat = await db.chats.get(curChatId); fullChat.messages = await db.msgs.where('chatId').equals(curChatId).toArray();
+                        await syncChatToServer(fullChat);
+                    }
+                };
         // ================= MEDIA LOGIC =================
         let isRecording = false;
         let mediaRecorder;
