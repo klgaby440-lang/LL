@@ -204,7 +204,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
             except Exception as e:
                 yield f"❌ Erreur Gemini en cours de flux : {str(e)}"
                 
-        return StreamingResponse(gemini_generator(), media_type="text/plain", headers=stream_headers)
+        return StreamingResponse(gemini_generator(), media_type="text/event-stream", headers=stream_headers)
 
     # ---------------------------------------------------
     # BRANCHE 2 : HUGGING FACE (AVEC FALLBACK GEMINI)
@@ -283,7 +283,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
             except Exception as backup_err:
                 yield f"❌ Échec total de la génération. Détails : {str(backup_err)}"
 
-    return StreamingResponse(hf_stream_generator(), media_type="text/plain", headers=stream_headers)
+    return StreamingResponse(hf_stream_generator(), media_type="text/event-stream", headers=stream_headers)
 
 # ==========================================
 # 7. ENREGISTREMENT ET LANCEMENT
