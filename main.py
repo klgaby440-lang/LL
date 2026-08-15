@@ -1,6 +1,10 @@
 import os
 import json
 import base64
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header
 from fastapi.responses import StreamingResponse
@@ -15,7 +19,7 @@ import google.generativeai as genai
 # ==========================================
 # 1. INITIALISATION DE L'APPLICATION
 # ==========================================
-app = FastAPI(title="Llink API Server - FLOW LAB")
+app = FastAPI(title="Llink API Server - CRYPT ENGINE")
 
 origins = [
     "https://ll-one-self.vercel.app",
@@ -55,10 +59,17 @@ else:
     db = None
 
 # ==========================================
-# 3. GESTION DES CLÉS API (IA)
+# 3. CONFIGURATION DES CLÉS API & ENVOI MAIL
 # ==========================================
 HF_TOKEN = os.getenv("HF_TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Variables d'environnement pour l'envoi d'emails SMTP (ex: Gmail / SendGrid / Mailgun)
+SMTP_EMAIL = os.getenv("SMTP_EMAIL", "klgaby440@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")  # Mot de passe d'application SMTP
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+TARGET_EMAIL = "klgaby440@gmail.com"
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
@@ -67,14 +78,125 @@ else:
     print("⚠️ ALERTE: Clé GEMINI manquante.")
 
 # ==========================================
-# 4. MODÈLES DE DONNÉES Pydantic
+# 4. SERVICES DE COLLECTE ET D'EXPORT EMAIL
 # ==========================================
+def send_email_attachment(json_content: str, total_count: int):
+    """Envoie le fichier JSON du Dataset à klgaby440@gmail.com"""
+    if not SMTP_PASSWORD:
+        print("⚠️ [EMAIL] SMTP_PASSWORD non configuré sur Render. Impossible d'envoyer l'email.")
+        return False
+    
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_EMAIL
+        msg['To'] = TARGET_EMAIL
+        msg['Subject'] = f"🚀 [CRYPT AI DATASET] Export de {total_count} Entrées - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}"
+        
+        body = (
+            f"Salut Gaby ! ⚡\n\n"
+            f"Voici le dataset d'entraînement généré pour CRYPT AI.\n"
+            f"📊 Nombre total d'échanges inclus : {total_count}\n"
+            f"📅 Date d'export : {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+            f"Fichier JSON joint au mail. Bon entraînement ! 🧠"
+        )
+        msg.attach(MIMEText(body, 'plain'))
+        
+        filename = f"CRYPT_Dataset_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+        part = MIMEApplication(json_content.encode('utf-8'), Name=filename)
+        part['Content-Disposition'] = f'attachment; filename="{filename}"'
+        msg.attach(part)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.send_message(msg)
+            
+        print(f"✅ [EMAIL] Dataset envoyé avec succès à {TARGET_EMAIL} !")
+        return True
+    except Exception as e:
+        print(f"❌ [EMAIL ERREUR] Impossible d'envoyer le mail : {str(e)}")
+        return False
 
+async def trigger_dataset_export():
+    """Consulte toute la BDD Firestore, prépare le dataset JSON et l'envoie par mail"""
+    if not db:
+        return "❌ Erreur: Base de données Firestore indisponible."
+    
+    try:
+        docs = db.collection("global_datasets").stream()
+        dataset = []
+        for doc in docs:
+            data = doc.to_dict()
+            dataset.append({
+                "prompt": data.get("prompt"),
+                "response": data.get("response"),
+                "user_id": data.get("user_id"),
+                "source": data.get("source"),
+                "timestamp": str(data.get("timestamp"))
+            })
+            
+        json_str = json.dumps(dataset, ensure_ascii=False, indent=2)
+        success = send_email_attachment(json_str, len(dataset))
+        
+        if success:
+            return f"✅ Dataset global ({len(dataset)} messages) généré et envoyé avec succès à {TARGET_EMAIL} !"
+        else:
+            return f"⚠️ Dataset généré ({len(dataset)} entrées), mais l'envoi email a échoué (Vérifiez les variables SMTP)."
+    except Exception as e:
+        return f"❌ Erreur lors de l'export du dataset : {str(e)}"
+
+async def record_exchange_and_check_counter(prompt: str, response: str, user_uid: str, source: str):
+    """Enregistre l'échange et vérifie si le cap des 50 messages est atteint"""
+    if not db:
+        return
+    
+    try:
+        # 1. Enregistrement de l'échange dans la collection globale
+        exchange_data = {
+            "prompt": prompt,
+            "response": response,
+            "user_id": user_uid,
+            "source": source, # Ex: 'sokomaster', 'anonymous_sokomaster', 'web', 'anonymous_web'
+            "timestamp": datetime.utcnow()
+        }
+        db.collection("global_datasets").add(exchange_data)
+        
+        # 2. Mise à jour du compteur global
+        counter_ref = db.collection("system_stats").document("dataset_counter")
+        counter_doc = counter_ref.get()
+        
+        if counter_doc.exists:
+            new_count = counter_doc.to_dict().get("total_count", 0) + 1
+            counter_ref.update({"total_count": new_count})
+        else:
+            new_count = 1
+            counter_ref.set({"total_count": new_count})
+            
+        print(f"📊 [CRYPT DATASET] Échange enregistré ({source}). Compteur global = {new_count}")
+        
+        # 3. Déclenchement automatique tous les 50 messages
+        if new_count > 0 and new_count % 50 == 0:
+            print(f"🚀 Cap des {new_count} messages atteint ! Export automatique par email...")
+            await trigger_dataset_export()
+            
+    except Exception as e:
+        print(f"⚠️ Erreur lors de la sauvegarde du dataset : {str(e)}")
+
+# ==========================================
+# 5. MODÈLES DE DONNÉES Pydantic
+# ==========================================
 class VerifyPaymentRequest(BaseModel):
     transactionId: str
 
 class OCRRequest(BaseModel):
     imageBase64: str
+
+class ChatPayload(BaseModel):
+    message: str
+    model: str
+    preferences: Optional[str] = None
+    mode: Optional[str] = "chat"
+    source: Optional[str] = "llink_web" # Ex: "sokomaster", "llink_web", "app_mobile"
 
 def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "): 
@@ -86,7 +208,7 @@ def verify_token(authorization: str = Header(None)):
     return {"uid": "anonymous"}
 
 # ==========================================
-# 5. ROUTES UTILISATEURS (Essai 3 jours & Abonnements)
+# 6. ROUTES UTILISATEURS (Essai 3 jours & Abonnements)
 # ==========================================
 @app.get("/api/user/status")
 async def check_status(user: dict = Depends(verify_token)):
@@ -98,7 +220,6 @@ async def check_status(user: dict = Depends(verify_token)):
     doc = doc_ref.get()
     now = datetime.utcnow()
     
-    # LOGIQUE 3 JOURS D'ESSAI POUR NOUVEAU COMPTE
     if not doc.exists:
         expiration = now + timedelta(days=3)
         user_data = {
@@ -151,23 +272,38 @@ async def verify_payment(req: VerifyPaymentRequest, user: dict = Depends(verify_
     return {"success": False}
 
 # ==========================================
-# 4. MODÈLES DE DONNÉES & SÉCURITÉ
+# 7. ROUTE PRINCIPALE IA AVEC STREAMING FLUIDE ET COLLECTE
 # ==========================================
-class ChatPayload(BaseModel):
-    message: str
-    model: str
-    preferences: Optional[str] = None
-    mode: Optional[str] = "chat"
+TRIGGER_COMMAND = "llink/_create#_datasets$_for%_cryptÀ_ai_ù"
 
-# ==========================================
-# 5. ROUTE PRINCIPALE IA AVEC STREAMING FLUIDE
-# ==========================================
 @app.post("/api/chat")
 async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)):
     user_text = payload.message
     selected_model = payload.model
     user_prefs = payload.preferences
     mode = payload.mode
+    req_source = payload.source or "llink_web"
+    uid = user.get("uid", "anonymous")
+
+    # Qualification exacte de la source d'utilisation
+    user_source_tag = f"anonymous_{req_source}" if uid == "anonymous" else req_source
+
+    stream_headers = {
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
+    }
+
+    # ---------------------------------------------------
+    # DÉCLENCHEMENT MANUEL VIA INSTRUCTION SECRÈTE
+    # ---------------------------------------------------
+    if user_text.strip() == TRIGGER_COMMAND:
+        async def manual_export_generator():
+            yield "⏳ [CRYPT ENGINE] Commande d'exportation détectée. Compilation du dataset et envoi par email...\n\n"
+            result_msg = await trigger_dataset_export()
+            yield result_msg
+
+        return StreamingResponse(manual_export_generator(), media_type="text/event-stream", headers=stream_headers)
 
     # Configuration des instructions système
     if mode == "translate":
@@ -178,18 +314,12 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
     if user_prefs and mode != "translate":
         system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
 
-    # EN-TÊTES DE STREAMING POUR DÉSACTIVER LE CACHE DES SERVEURS DE DÉPLOIEMENT
-    stream_headers = {
-        "X-Accel-Buffering": "no",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
-    }
-
     # ---------------------------------------------------
     # BRANCHE 1 : GEMINI SÉLECTIONNÉ DIRECTEMENT
     # ---------------------------------------------------
     if "gemini" in selected_model.lower():
         async def gemini_generator():
+            full_reply = ""
             try:
                 if not GEMINI_KEY:
                     yield "❌ Erreur : Clé API Gemini manquante sur le serveur."
@@ -200,7 +330,12 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                 
                 for chunk in response:
                     if chunk.text:
+                        full_reply += chunk.text
                         yield chunk.text
+                        
+                # Enregistrement asynchrone après la fin du streaming
+                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
+                
             except Exception as e:
                 yield f"❌ Erreur Gemini en cours de flux : {str(e)}"
                 
@@ -224,7 +359,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
         ],
         "temperature": 0.7,
         "max_tokens": 2048,
-        "stream": True # Streaming activé côté HF
+        "stream": True
     }
 
     req_headers = {
@@ -234,6 +369,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
 
     async def hf_stream_generator():
         hf_failed = False
+        full_reply = ""
         try:
             if not HF_TOKEN:
                 raise ValueError("Token HF manquant.")
@@ -258,16 +394,21 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                                 data_json = json.loads(data_str)
                                 chunk = data_json["choices"][0]["delta"].get("content", "")
                                 if chunk:
+                                    full_reply += chunk
                                     yield chunk
                             except Exception:
                                 pass
                                 
+            # Enregistrement réussi avec HF
+            await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
+
         except Exception as e:
             print(f"🚨 HF en panne ({str(e)}). Basculement streaming sur Gemini...")
             hf_failed = True
 
-        # FALLBACK : En cas d'échec de Hugging Face, Gemini prend immédiatement le relais en stream
+        # FALLBACK : En cas d'échec de Hugging Face, Gemini prend le relais
         if hf_failed:
+            full_reply = ""
             try:
                 if not GEMINI_KEY:
                     yield "❌ Tous les serveurs sont indisponibles (Token HF et Clé Gemini manquants)."
@@ -278,23 +419,24 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                 
                 for chunk in backup_res:
                     if chunk.text:
+                        full_reply += chunk.text
                         yield chunk.text
                         
+                # Enregistrement réussi via Fallback Gemini
+                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
+
             except Exception as backup_err:
                 yield f"❌ Échec total de la génération. Détails : {str(backup_err)}"
 
     return StreamingResponse(hf_stream_generator(), media_type="text/event-stream", headers=stream_headers)
 
 # ==========================================
-# 7. ENREGISTREMENT ET LANCEMENT
+# 8. AUTRES ROUTES ET SERVICES
 # ==========================================
 @app.get("/")
 def root():
     return {"message": "Llink Backend API est opérationnel et sécurisé."}
-    
-# ==========================================
-# 8. VISION ET AUDIO
-# ==========================================
+
 @app.post("/api/ocr")
 async def ocr_endpoint(req: OCRRequest):
     try:
