@@ -1,10 +1,6 @@
 import os
 import json
 import base64
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header
 from fastapi.responses import StreamingResponse
@@ -59,16 +55,13 @@ else:
     db = None
 
 # ==========================================
-# 3. CONFIGURATION DES CLÉS API & ENVOI MAIL
+# 3. CONFIGURATION DES CLÉS API & RESEND HTTP
 # ==========================================
 HF_TOKEN = os.getenv("HF_TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Variables d'environnement pour l'envoi d'emails SMTP (ex: Gmail / SendGrid / Mailgun)
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "klgaby440@gmail.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")  # Mot de passe d'application SMTP
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+# Clé API Resend pour l'envoi d'e-mails via HTTPS (Port 443 - Jamais bloqué sur Render)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 TARGET_EMAIL = "klgaby440@gmail.com"
 
 if GEMINI_KEY:
@@ -78,47 +71,62 @@ else:
     print("⚠️ ALERTE: Clé GEMINI manquante.")
 
 # ==========================================
-# 4. SERVICES DE COLLECTE ET D'EXPORT EMAIL
+# 4. SERVICE D'EXPORT EMAIL VIA L'API RESEND (HTTP)
 # ==========================================
-def send_email_attachment(json_content: str, total_count: int):
-    """Envoie le fichier JSON du Dataset à klgaby440@gmail.com"""
-    if not SMTP_PASSWORD:
-        print("⚠️ [EMAIL] SMTP_PASSWORD non configuré sur Render. Impossible d'envoyer l'email.")
+async def send_email_via_resend(json_content: str, total_count: int):
+    """Envoie le fichier JSON du Dataset à klgaby440@gmail.com via l'API HTTP Resend"""
+    if not RESEND_API_KEY:
+        print("⚠️ [EMAIL] RESEND_API_KEY non configuré sur Render. Impossible d'envoyer l'e-mail.")
         return False
     
     try:
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_EMAIL
-        msg['To'] = TARGET_EMAIL
-        msg['Subject'] = f"🚀 [CRYPT AI DATASET] Export de {total_count} Entrées - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}"
-        
-        body = (
-            f"Salut Gaby ! ⚡\n\n"
-            f"Voici le dataset d'entraînement généré pour CRYPT AI.\n"
-            f"📊 Nombre total d'échanges inclus : {total_count}\n"
-            f"📅 Date d'export : {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
-            f"Fichier JSON joint au mail. Bon entraînement ! 🧠"
-        )
-        msg.attach(MIMEText(body, 'plain'))
-        
         filename = f"CRYPT_Dataset_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
-        part = MIMEApplication(json_content.encode('utf-8'), Name=filename)
-        part['Content-Disposition'] = f'attachment; filename="{filename}"'
-        msg.attach(part)
         
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.send_message(msg)
+        # Encodage du fichier JSON en Base64 pour l'attachement de l'API Resend
+        encoded_file = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
+        
+        email_payload = {
+            "from": "CRYPT AI Engine <onboarding@resend.dev>", # Adresse par défaut de test Resend
+            "to": [TARGET_EMAIL],
+            "subject": f"🚀 [CRYPT AI DATASET] Export de {total_count} Entrées - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
+            "html": (
+                f"<h3>Salut Gaby ! ⚡</h3>"
+                f"<p>Voici le dataset d'entraînement généré automatiquement pour <b>CRYPT AI</b>.</p>"
+                f"<ul>"
+                f"<li><b>Nombre total d'échanges inclus :</b> {total_count}</li>"
+                f"<li><b>Date d'export UTC :</b> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}</li>"
+                f"</ul>"
+                f"<p>Le fichier JSON complet est joint à cet e-mail. Bon entraînement pour tes modèles ! 🧠🚀</p>"
+            ),
+            "attachments": [
+                {
+                    "filename": filename,
+                    "content": encoded_file
+                }
+            ]
+        }
+
+        headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post("https://api.resend.com/emails", json=email_payload, headers=headers)
             
-        print(f"✅ [EMAIL] Dataset envoyé avec succès à {TARGET_EMAIL} !")
-        return True
+            if response.status_code in [200, 201]:
+                print(f"✅ [RESEND EMAIL] Dataset envoyé avec succès à {TARGET_EMAIL} !")
+                return True
+            else:
+                print(f"❌ [RESEND ERREUR] Code {response.status_code} : {response.text}")
+                return False
+
     except Exception as e:
-        print(f"❌ [EMAIL ERREUR] Impossible d'envoyer le mail : {str(e)}")
+        print(f"❌ [EMAIL ERREUR] Exception critique lors de l'appel HTTP Resend : {str(e)}")
         return False
 
 async def trigger_dataset_export():
-    """Consulte toute la BDD Firestore, prépare le dataset JSON et l'envoie par mail"""
+    """Consulte toute la BDD Firestore, prépare le dataset JSON et l'envoie par API HTTP"""
     if not db:
         return "❌ Erreur: Base de données Firestore indisponible."
     
@@ -136,12 +144,12 @@ async def trigger_dataset_export():
             })
             
         json_str = json.dumps(dataset, ensure_ascii=False, indent=2)
-        success = send_email_attachment(json_str, len(dataset))
+        success = await send_email_via_resend(json_str, len(dataset))
         
         if success:
-            return f"✅ Dataset global ({len(dataset)} messages) généré et envoyé avec succès à {TARGET_EMAIL} !"
+            return f"✅ Dataset global ({len(dataset)} messages) généré et envoyé avec succès à {TARGET_EMAIL} via Resend !"
         else:
-            return f"⚠️ Dataset généré ({len(dataset)} entrées), mais l'envoi email a échoué (Vérifiez les variables SMTP)."
+            return f"⚠️ Dataset généré ({len(dataset)} entrées), mais l'envoi HTTP a échoué (Vérifiez la clé RESEND_API_KEY sur Render)."
     except Exception as e:
         return f"❌ Erreur lors de l'export du dataset : {str(e)}"
 
@@ -156,7 +164,7 @@ async def record_exchange_and_check_counter(prompt: str, response: str, user_uid
             "prompt": prompt,
             "response": response,
             "user_id": user_uid,
-            "source": source, # Ex: 'sokomaster', 'anonymous_sokomaster', 'web', 'anonymous_web'
+            "source": source,
             "timestamp": datetime.utcnow()
         }
         db.collection("global_datasets").add(exchange_data)
@@ -176,7 +184,7 @@ async def record_exchange_and_check_counter(prompt: str, response: str, user_uid
         
         # 3. Déclenchement automatique tous les 50 messages
         if new_count > 0 and new_count % 50 == 0:
-            print(f"🚀 Cap des {new_count} messages atteint ! Export automatique par email...")
+            print(f"🚀 Cap des {new_count} messages atteint ! Export automatique par e-mail...")
             await trigger_dataset_export()
             
     except Exception as e:
@@ -196,7 +204,7 @@ class ChatPayload(BaseModel):
     model: str
     preferences: Optional[str] = None
     mode: Optional[str] = "chat"
-    source: Optional[str] = "llink_web" # Ex: "sokomaster", "llink_web", "app_mobile"
+    source: Optional[str] = "llink_web"
 
 def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "): 
@@ -208,7 +216,7 @@ def verify_token(authorization: str = Header(None)):
     return {"uid": "anonymous"}
 
 # ==========================================
-# 6. ROUTES UTILISATEURS (Essai 3 jours & Abonnements)
+# 6. ROUTES UTILISATEURS
 # ==========================================
 @app.get("/api/user/status")
 async def check_status(user: dict = Depends(verify_token)):
@@ -272,7 +280,7 @@ async def verify_payment(req: VerifyPaymentRequest, user: dict = Depends(verify_
     return {"success": False}
 
 # ==========================================
-# 7. ROUTE PRINCIPALE IA AVEC STREAMING FLUIDE ET COLLECTE
+# 7. ROUTE PRINCIPALE IA AVEC STREAMING ET COLLECTE
 # ==========================================
 TRIGGER_COMMAND = "llink/_create#_datasets$_for%_cryptÀ_ai_ù"
 
@@ -285,7 +293,6 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
     req_source = payload.source or "llink_web"
     uid = user.get("uid", "anonymous")
 
-    # Qualification exacte de la source d'utilisation
     user_source_tag = f"anonymous_{req_source}" if uid == "anonymous" else req_source
 
     stream_headers = {
@@ -294,18 +301,15 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
         "Connection": "keep-alive"
     }
 
-    # ---------------------------------------------------
-    # DÉCLENCHEMENT MANUEL VIA INSTRUCTION SECRÈTE
-    # ---------------------------------------------------
+    # Déclenchement manuel via instruction secrète
     if user_text.strip() == TRIGGER_COMMAND:
         async def manual_export_generator():
-            yield "⏳ [CRYPT ENGINE] Commande d'exportation détectée. Compilation du dataset et envoi par email...\n\n"
+            yield "⏳ [CRYPT ENGINE] Commande d'exportation détectée. Compilation du dataset et envoi par API Resend...\n\n"
             result_msg = await trigger_dataset_export()
             yield result_msg
 
         return StreamingResponse(manual_export_generator(), media_type="text/event-stream", headers=stream_headers)
 
-    # Configuration des instructions système
     if mode == "translate":
         system_instruction = "Tu es un traducteur expert. Tu ne dois donner QUE la traduction exacte, sans aucune explication, ni commentaire, ni introduction. Traduis mot pour mot."
     else:
@@ -314,9 +318,6 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
     if user_prefs and mode != "translate":
         system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
 
-    # ---------------------------------------------------
-    # BRANCHE 1 : GEMINI SÉLECTIONNÉ DIRECTEMENT
-    # ---------------------------------------------------
     if "gemini" in selected_model.lower():
         async def gemini_generator():
             full_reply = ""
@@ -333,7 +334,6 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                         full_reply += chunk.text
                         yield chunk.text
                         
-                # Enregistrement asynchrone après la fin du streaming
                 await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
                 
             except Exception as e:
@@ -341,9 +341,6 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                 
         return StreamingResponse(gemini_generator(), media_type="text/event-stream", headers=stream_headers)
 
-    # ---------------------------------------------------
-    # BRANCHE 2 : HUGGING FACE (AVEC FALLBACK GEMINI)
-    # ---------------------------------------------------
     if "deepseek" in selected_model.lower():
         hf_model = "deepseek-ai/DeepSeek-V3"
     elif "llama" in selected_model.lower():
@@ -399,14 +396,12 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                             except Exception:
                                 pass
                                 
-            # Enregistrement réussi avec HF
             await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
 
         except Exception as e:
             print(f"🚨 HF en panne ({str(e)}). Basculement streaming sur Gemini...")
             hf_failed = True
 
-        # FALLBACK : En cas d'échec de Hugging Face, Gemini prend le relais
         if hf_failed:
             full_reply = ""
             try:
@@ -422,7 +417,6 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                         full_reply += chunk.text
                         yield chunk.text
                         
-                # Enregistrement réussi via Fallback Gemini
                 await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
 
             except Exception as backup_err:
