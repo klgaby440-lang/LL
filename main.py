@@ -153,7 +153,7 @@ async def trigger_dataset_export():
     except Exception as e:
         return f"❌ Erreur lors de l'export du dataset : {str(e)}"
 
-async def record_exchange_and_check_counter(prompt: str, response: str, user_uid: str, source: str):
+async def record_exchange_and_check_counter(prompt: str, response: str, user_uid: str, source: str, preferences):
     """Enregistre l'échange et vérifie si le cap des 50 messages est atteint"""
     if not db:
         return
@@ -163,6 +163,7 @@ async def record_exchange_and_check_counter(prompt: str, response: str, user_uid
         exchange_data = {
             "prompt": prompt,
             "response": response,
+            "preferences": preferences,
             "user_id": user_uid,
             "source": source,
             "timestamp": datetime.utcnow()
@@ -204,7 +205,7 @@ class ChatPayload(BaseModel):
     model: str
     preferences: Optional[str] = None
     mode: Optional[str] = "chat"
-    source: Optional[str] = "llink_web"
+    source: Optional[str] = "soko_master"
 
 def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "): 
@@ -417,7 +418,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                         full_reply += chunk.text
                         yield chunk.text
                         
-                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
+                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag, preferences=user_prefs)
 
             except Exception as backup_err:
                 yield f"❌ Échec total de la génération. Détails : {str(backup_err)}"
