@@ -547,7 +547,7 @@
                     if(window.isOnline) {
                         try {
                             const prefs = localStorage.getItem('llink_prefs') || "";
-                            const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs };
+                            const payload = { message: txt, mode: currentMode, model: document.getElementById('model-selector').value, preferences: prefs, source: 'llik_web' };
                             const res = await fetch(`${SERVER_URL}/api/chat`, { method: 'POST', body: JSON.stringify(payload), headers: {"Content-Type":"application/json", "Authorization": window.authToken?`Bearer ${window.authToken}`:""} });
                             const reader = res.body.getReader();
                             const decoder = new TextDecoder('utf-8'); 
