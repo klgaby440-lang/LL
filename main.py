@@ -21,6 +21,7 @@ origins = [
     "https://ll-one-self.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://klgaby440-lang.github.io/class-net/",
 ]
 
 app.add_middleware(
