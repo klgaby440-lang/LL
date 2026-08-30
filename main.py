@@ -155,7 +155,7 @@ async def trigger_dataset_export():
     except Exception as e:
         return f"❌ Erreur lors de l'export du dataset : {str(e)}"
 
-async def record_exchange_and_check_counter(prompt: str, response: str, user_uid: str, source: str, preferences):
+async def record_exchange_and_check_counter(prompt: str, response: str, user_uid: str, source: str, preferences: str, mode: str):
     """Enregistre l'échange et vérifie si le cap des 50 messages est atteint"""
     if not db:
         return
@@ -168,6 +168,7 @@ async def record_exchange_and_check_counter(prompt: str, response: str, user_uid
             "preferences": preferences,
             "user_id": user_uid,
             "source": source,
+            "mode": mode,
             "timestamp": datetime.utcnow()
         }
         db.collection("global_datasets").add(exchange_data)
@@ -316,7 +317,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
     if mode == "translate":
         system_instruction = "Tu es un traducteur expert. Tu ne dois donner QUE la traduction exacte, sans aucune explication, ni commentaire, ni introduction. Traduis mot pour mot."
     else:
-        system_instruction = "Tu es Llink, une IA d'assistance et de traduction créée par CRYPT. Tu es précis, structuré et amical. Le PDG de CRYPT est KL Gaby (Kahorha Gabriel) et cela fait de lui ton inventeur."
+        system_instruction = "Tu es Llink, une IA d'assistance et de traduction créée par CRYPT. Tu es précis, structuré et amical. Le PDG de CRYPT (Core Resolution Yield Plateform Technologie) est KL Gaby (Kahorha Gabriel) et cela fait de lui ton inventeur."
     
     if user_prefs and mode != "translate":
         system_instruction += f" Prends en compte ces préférences strictes de l'utilisateur : {user_prefs}"
@@ -337,7 +338,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                         full_reply += chunk.text
                         yield chunk.text
                         
-                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
+                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag, preferences=user_prefs, mode=mode)
                 
             except Exception as e:
                 yield f"❌ Erreur Gemini en cours de flux : {str(e)}"
@@ -399,7 +400,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                             except Exception:
                                 pass
                                 
-            await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag)
+            await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag, preferences=user_prefs, mode=mode)
 
         except Exception as e:
             print(f"🚨 HF en panne ({str(e)}). Basculement streaming sur Gemini...")
@@ -420,7 +421,7 @@ async def chat_endpoint(payload: ChatPayload, user: dict = Depends(verify_token)
                         full_reply += chunk.text
                         yield chunk.text
                         
-                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag, preferences=user_prefs)
+                await record_exchange_and_check_counter(user_text, full_reply, uid, user_source_tag, preferences=user_prefs, mode=mode)
 
             except Exception as backup_err:
                 yield f"❌ Échec total de la génération. Détails : {str(backup_err)}"
