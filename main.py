@@ -142,6 +142,7 @@ async def trigger_dataset_export():
                 "response": data.get("response"),
                 "user_id": data.get("user_id"),
                 "source": data.get("source"),
+                "preferences": data.get("preferences"),
                 "timestamp": str(data.get("timestamp"))
             })
             
