@@ -22,7 +22,10 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://klgaby440-lang.github.io",
-    "https://class-net-fawn.vercel.app",
+    "https://class-net-p.vercel.app",
+    'tauri://localhost',
+    'http://tauri.localhost',
+    'https://tauri.localhost',
 ]
 
 app.add_middleware(
